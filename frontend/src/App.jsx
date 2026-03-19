@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import logo from "./logo.png";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -119,8 +120,7 @@ function AuthScreen({ onAuth }) {
     <div style={{ minHeight: "100vh", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: "40px 36px", width: "100%", maxWidth: 420, boxShadow: "0 2px 24px rgba(0,0,0,0.07)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🧘</div>
-          <div style={{ fontWeight: 700, fontSize: 22, color: "#185FA5", letterSpacing: "-0.5px" }}>Remind Zen</div>
+          <img src={logo} alt="Remind Zen" style={{ width: 100, marginBottom: 4 }} />
           <div style={{ fontSize: 13, color: "#aaa", marginTop: 4 }}>
             {mode === "login" ? "Sign in to your account" : mode === "signup" ? "Create your business account" : "Reset your password"}
           </div>
@@ -761,8 +761,8 @@ export default function App() {
 
       <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "0 32px" }}>
         <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 60, gap: 32 }}>
-          <div style={{ fontWeight: 700, fontSize: 18, color: "#185FA5", letterSpacing: "-0.5px" }}>
-            🧘 Remind Zen
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img src={logo} alt="Remind Zen" style={{ height: 36 }} />
           </div>
           <nav style={{ display: "flex", gap: 2, flex: 1 }}>
             {NAV.map(n => (
