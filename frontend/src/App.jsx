@@ -802,7 +802,7 @@ function LegalPage() {
           <p>We reserve the right to update these Terms at any time. We will notify you of significant changes by email or by posting a notice within the Service. Your continued use of the Service after changes constitutes your acceptance of the new Terms.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>8. Contact</h3>
-          <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:legal@remindzen.com" style={{ color: "#185FA5" }}>legal@remindzen.com</a>.</p>
+          <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>.</p>
         </div>
       )}
 
@@ -835,7 +835,7 @@ function LegalPage() {
           <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at the address below. California residents may have additional rights under the CCPA.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>8. Contact</h3>
-          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:privacy@remindzen.com" style={{ color: "#185FA5" }}>privacy@remindzen.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
+          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
         </div>
       )}
     </div>
