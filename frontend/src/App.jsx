@@ -11,7 +11,7 @@ const TEMPLATES = [
   { id: 4, name: "Payment Due", channel: "sms", body: "Hi {name}, a friendly reminder that your payment of {amount} is due on {date}. Please contact us with any questions." },
 ];
 
-const NAV = ["Customers", "Send Reminder", "Templates", "History", "Settings"];
+const NAV = ["Customers", "Send Reminder", "Templates", "History", "Settings", "Legal"];
 
 // ── Shared UI ──
 
@@ -177,7 +177,7 @@ function CustomersPage({ user, showToast }) {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null });
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -190,13 +190,13 @@ function CustomersPage({ user, showToast }) {
 
   const openAdd = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false });
+    setForm({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null });
     setShowModal(true);
   };
 
   const openEdit = (c) => {
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null });
     setShowModal(true);
   };
 
@@ -218,6 +218,42 @@ function CustomersPage({ user, showToast }) {
     if (!error) { showToast(`${name} removed`, "success"); loadCustomers(); }
   };
 
+  const handleCSVImport = async (file) => {
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.trim().split("\n");
+    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ""));
+    const rows = lines.slice(1).map(line => {
+      const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      return obj;
+    }).filter(r => r.name || r.full_name);
+
+    let added = 0, updated = 0, skipped = 0;
+    for (const row of rows) {
+      const name = row.name || row.full_name || row.customer_name || "";
+      const email = row.email || row.email_address || "";
+      const phone = row.phone || row.phone_number || row.mobile || "";
+      const notes = row.notes || row.note || "";
+      const preferred_channel = row.preferred_channel || row.channel || "email";
+      if (!name) { skipped++; continue; }
+
+      if (email) {
+        const { data: existing } = await supabase.from("customers").select("id").eq("business_id", user.id).eq("email", email).single();
+        if (existing) {
+          await supabase.from("customers").update({ name, phone, notes, preferred_channel }).eq("id", existing.id);
+          updated++;
+          continue;
+        }
+      }
+      await supabase.from("customers").insert({ name, email, phone, notes, preferred_channel, business_id: user.id });
+      added++;
+    }
+    loadCustomers();
+    showToast(`Import complete: ${added} added, ${updated} updated${skipped > 0 ? ", " + skipped + " skipped" : ""}`, "success");
+  };
+
   const toggleUnsubscribe = async (c) => {
     const { error } = await supabase.from("customers").update({ unsubscribed: !c.unsubscribed }).eq("id", c.id);
     if (!error) { showToast(c.unsubscribed ? `${c.name} resubscribed` : `${c.name} opted out`, "success"); loadCustomers(); }
@@ -233,7 +269,13 @@ function CustomersPage({ user, showToast }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, width: 280, marginBottom: 0 }} />
-        <button onClick={openAdd} style={btnStyle(true)}>+ Add Customer</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <label style={{ ...btnStyle(false), cursor: "pointer", display: "inline-flex", alignItems: "center" }}>
+            📥 Import CSV
+            <input type="file" accept=".csv" style={{ display: "none" }} onChange={e => handleCSVImport(e.target.files[0])} />
+          </label>
+          <button onClick={openAdd} style={btnStyle(true)}>+ Add Customer</button>
+        </div>
       </div>
 
       {loading ? (
@@ -279,8 +321,15 @@ function CustomersPage({ user, showToast }) {
             <option value="sms">SMS</option>
             <option value="both">Email + SMS</option>
           </select>
-          {editingCustomer && (
-            <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 4, paddingTop: 16, marginBottom: 12 }}>
+          <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 4, paddingTop: 16, marginBottom: 12 }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 12 }}>
+              <input type="checkbox" checked={form.sms_consent} onChange={e => setForm({ ...form, sms_consent: e.target.checked, sms_consent_at: e.target.checked ? new Date().toISOString() : null })} style={{ width: 16, height: 16, cursor: "pointer", marginTop: 2, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>SMS consent given</div>
+                <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Customer has agreed to receive SMS reminders. Required by TCPA before sending text messages.{form.sms_consent_at && <span style={{ display: "block", marginTop: 2, color: "#3B6D11" }}>Consent recorded {new Date(form.sms_consent_at).toLocaleDateString()}</span>}</div>
+              </div>
+            </label>
+            {editingCustomer && (
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={form.unsubscribed} onChange={e => setForm({ ...form, unsubscribed: e.target.checked })} style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#e24b4a" }} />
                 <div>
@@ -292,8 +341,8 @@ function CustomersPage({ user, showToast }) {
                   </div>
                 </div>
               </label>
-            </div>
-          )}
+            )}
+          </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
             <button onClick={() => setShowModal(false)} style={btnStyle(false)}>Cancel</button>
             <button onClick={handleSave} style={btnStyle(true)}>{editingCustomer ? "Save Changes" : "Add Customer"}</button>
@@ -707,6 +756,92 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
   );
 }
 
+
+// ── Legal Page ──
+
+function LegalPage() {
+  const [tab, setTab] = useState("terms");
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
+        {[["terms", "Terms of Service"], ["privacy", "Privacy Policy"]].map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: tab === key ? "#185FA5" : "#f0f0f0", color: tab === key ? "#fff" : "#555", fontWeight: 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "terms" && (
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "32px 36px", lineHeight: 1.8, fontSize: 14, color: "#333" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Terms of Service</h2>
+          <p style={{ margin: "0 0 24px", color: "#aaa", fontSize: 13 }}>Last updated: {today}</p>
+
+          <p>These Terms of Service ("Terms") govern your use of the Remind Zen platform ("Service") operated by Remind Zen LLC ("us", "we", or "our"). By accessing or using our Service, you agree to be bound by these Terms.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>1. Use of the Service</h3>
+          <p>Remind Zen provides a customer reminder platform that allows businesses to send email and SMS messages to their customers. You are responsible for all activity that occurs under your account. You must not use the Service for any unlawful purpose or in violation of any regulations, including but not limited to the CAN-SPAM Act and the Telephone Consumer Protection Act (TCPA).</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>2. Customer consent</h3>
+          <p>You are solely responsible for ensuring that your customers have given proper consent to receive communications from you before sending them messages through our Service. You must maintain records of customer consent and provide opt-out mechanisms in all communications. We reserve the right to suspend accounts that violate consent requirements.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>3. Prohibited content</h3>
+          <p>You may not use the Service to send spam, unsolicited messages, misleading content, illegal content, or any messages that violate the rights of third parties. We reserve the right to remove content and suspend accounts that violate these policies without notice.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>4. Account responsibility</h3>
+          <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorized use of your account. We are not liable for any loss or damage arising from your failure to protect your account information.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>5. Service availability</h3>
+          <p>We strive to maintain reliable service but do not guarantee uninterrupted or error-free operation. We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>6. Limitation of liability</h3>
+          <p>To the maximum extent permitted by law, Remind Zen LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service. Our total liability to you shall not exceed the amounts paid by you to us in the three months preceding the claim.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>7. Changes to terms</h3>
+          <p>We reserve the right to update these Terms at any time. We will notify you of significant changes by email or by posting a notice within the Service. Your continued use of the Service after changes constitutes your acceptance of the new Terms.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>8. Contact</h3>
+          <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:legal@remindzen.com" style={{ color: "#185FA5" }}>legal@remindzen.com</a>.</p>
+        </div>
+      )}
+
+      {tab === "privacy" && (
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "32px 36px", lineHeight: 1.8, fontSize: 14, color: "#333" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Privacy Policy</h2>
+          <p style={{ margin: "0 0 24px", color: "#aaa", fontSize: 13 }}>Last updated: {today}</p>
+
+          <p>Remind Zen LLC ("we", "us", or "our") operates the Remind Zen platform. This Privacy Policy explains how we collect, use, and protect information when you use our Service.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>1. Information we collect</h3>
+          <p>We collect information you provide directly to us, including your business name, email address, and password when you create an account. We also store customer contact information (names, email addresses, phone numbers) that you enter into the platform on behalf of your business.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>2. How we use your information</h3>
+          <p>We use the information we collect to provide and operate the Service, send messages on your behalf to your customers, maintain send history and analytics, and communicate with you about your account. We do not sell your data or your customers' data to third parties.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>3. Customer data</h3>
+          <p>You retain ownership of all customer data you upload to the Service. We process this data solely on your behalf and in accordance with your instructions. You are responsible for ensuring you have proper authorization to store and use your customers' contact information.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>4. Data storage & security</h3>
+          <p>Your data is stored securely using Supabase, a SOC 2 compliant database provider. We implement industry-standard security measures including encryption in transit and at rest. However, no method of transmission over the Internet is 100% secure.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>5. Third-party services</h3>
+          <p>We use SendGrid to deliver email messages and Twilio to deliver SMS messages on your behalf. These providers may process recipient email addresses and phone numbers as part of message delivery. Please review their respective privacy policies for details.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>6. Data retention</h3>
+          <p>We retain your account data for as long as your account is active. You may delete your account and associated data at any time by contacting us. Send history is retained for 12 months for compliance and support purposes.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>7. Your rights</h3>
+          <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at the address below. California residents may have additional rights under the CCPA.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>8. Contact</h3>
+          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:privacy@remindzen.com" style={{ color: "#185FA5" }}>privacy@remindzen.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main App ──
 
 export default function App() {
@@ -753,6 +888,8 @@ export default function App() {
     Templates: ["Templates", "Reusable message templates"],
     History: ["Send History", "A log of all messages sent from your account"],
     Settings: ["Settings", "Manage your Remind Zen account"],
+    Legal: ["Legal", "Terms of service and privacy policy"],
+
   };
 
   return (
@@ -784,6 +921,7 @@ export default function App() {
         {page === "Templates" && <TemplatesPage showToast={showToast} />}
         {page === "History" && <HistoryPage user={user} />}
         {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} />}
+        {page === "Legal" && <LegalPage />}
       </div>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
