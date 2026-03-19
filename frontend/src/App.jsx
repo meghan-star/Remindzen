@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import logo from "./logo.png";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const ADMIN_EMAIL = "remindzenco@gmail.com";
 
 const TEMPLATES = [
   { id: 1, name: "Appointment Reminder", channel: "both", subject: "Reminder: Your appointment tomorrow", body: "Hi {name}, this is a reminder that you have an appointment scheduled for {date} at {time}. Please reply to confirm or call us to reschedule. See you soon!" },
@@ -11,7 +12,8 @@ const TEMPLATES = [
   { id: 4, name: "Payment Due", channel: "sms", body: "Hi {name}, a friendly reminder that your payment of {amount} is due on {date}. Please contact us with any questions." },
 ];
 
-const NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Settings", "Legal"];
+const NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Settings", "Feedback", "Legal"];
+const ADMIN_NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Settings", "Feedback", "Legal", "Admin"];
 
 // ── Shared UI ──
 
@@ -204,11 +206,34 @@ function CustomersPage({ user, showToast }) {
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
+
+    // Duplicate detection
+    if (form.email || form.phone) {
+      let dupQuery = supabase.from("customers").select("id,name").eq("business_id", user.id);
+      if (editingCustomer) dupQuery = dupQuery.neq("id", editingCustomer.id);
+      const { data: existing } = await dupQuery;
+      const dup = (existing || []).find(c =>
+        (form.email && c.email === form.email) || (form.phone && c.phone === form.phone)
+      );
+      if (dup) {
+        const field = (form.email && dup.email === form.email) ? "email" : "phone number";
+        if (!window.confirm(`A customer with this ${field} already exists (${dup.name}). Save anyway?`)) return;
+      }
+    }
+
     if (editingCustomer) {
       const { error } = await supabase.from("customers").update({ ...form }).eq("id", editingCustomer.id);
       if (!error) { showToast(`${form.name} updated`, "success"); loadCustomers(); setShowModal(false); }
       else showToast("Update failed", "error");
     } else {
+      if (form.email) {
+        const { data: dup } = await supabase.from("customers").select("id,name").eq("business_id", user.id).eq("email", form.email).single();
+        if (dup) { showToast(`A customer with this email already exists: ${dup.name}`, "error"); return; }
+      }
+      if (form.phone) {
+        const { data: dup } = await supabase.from("customers").select("id,name").eq("business_id", user.id).eq("phone", form.phone).single();
+        if (dup) { showToast(`A customer with this phone number already exists: ${dup.name}`, "error"); return; }
+      }
       const { error } = await supabase.from("customers").insert({ ...form, business_id: user.id });
       if (!error) { showToast(`${form.name} added`, "success"); loadCustomers(); setShowModal(false); }
       else showToast("Add failed", "error");
@@ -256,6 +281,38 @@ function CustomersPage({ user, showToast }) {
     showToast(`Import complete: ${added} added, ${updated} updated${skipped > 0 ? ", " + skipped + " skipped" : ""}`, "success");
   };
 
+  const handleExportCSV = () => {
+    const headers = ["name","email","phone","notes","preferred_channel","tags","unsubscribed","sms_consent","sms_consent_at"];
+    const rows = customers.map(c => headers.map(h => {
+      const val = h === "tags" ? (c.tags || []).join("|") : (c[h] ?? "");
+      return `"${String(val).replace(/"/g, '\"')}"`; 
+    }).join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "customers.csv"; a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${customers.length} customers`, "success");
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["name", "email", "phone", "notes", "preferred_channel", "tags", "unsubscribed", "sms_consent"];
+    const rows = customers.map(c => [
+      c.name, c.email || "", c.phone || "", c.notes || "",
+      c.preferred_channel || "email",
+      (c.tags || []).join("|"),
+      c.unsubscribed ? "yes" : "no",
+      c.sms_consent ? "yes" : "no",
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "remindzen-customers.csv"; a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${customers.length} customers`, "success");
+  };
+
   const toggleUnsubscribe = async (c) => {
     const { error } = await supabase.from("customers").update({ unsubscribed: !c.unsubscribed }).eq("id", c.id);
     if (!error) { showToast(c.unsubscribed ? `${c.name} resubscribed` : `${c.name} opted out`, "success"); loadCustomers(); }
@@ -280,6 +337,7 @@ function CustomersPage({ user, showToast }) {
             📥 Import CSV
             <input type="file" accept=".csv" style={{ display: "none" }} onChange={e => handleCSVImport(e.target.files[0])} />
           </label>
+          <button onClick={handleExportCSV} style={btnStyle(false)}>📤 Export CSV</button>
           <button onClick={openAdd} style={btnStyle(true)}>+ Add Customer</button>
         </div>
       </div>
@@ -350,8 +408,13 @@ function CustomersPage({ user, showToast }) {
               </span>
             ))}
           </div>
+          {(() => { const lib = JSON.parse(localStorage.getItem("tagLibrary") || "[]"); const suggestions = lib.filter(t => !(form.tags||[]).includes(t)); return suggestions.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+              {suggestions.map(t => <button key={t} onClick={() => setForm({ ...form, tags: [...(form.tags||[]), t] })} style={{ padding: "3px 10px", borderRadius: 99, border: "1px dashed #CECBF6", background: "transparent", color: "#534AB7", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ {t}</button>)}
+            </div>
+          ) : null; })()}
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <input style={{ ...inputStyle, marginBottom: 0, flex: 1 }} placeholder="Add a tag (e.g. VIP, monthly)" value={tagInput} onChange={e => setTagInput(e.target.value)}
+            <input style={{ ...inputStyle, marginBottom: 0, flex: 1 }} placeholder="Add a custom tag or pick above" value={tagInput} onChange={e => setTagInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); e.preventDefault(); } }} />
             <button onClick={() => { if (tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); }}} style={{ ...btnStyle(false), padding: "9px 16px" }}>Add</button>
           </div>
@@ -424,6 +487,15 @@ function SendPage({ user, business, showToast }) {
     setSending(true);
     try {
       const selectedCustomers = customers.filter(c => selected.includes(c.id));
+
+      // Rate limit check — count today's sends
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const { count } = await supabase.from("send_history").select("*", { count: "exact", head: true })
+        .eq("business_id", user.id).gte("sent_at", todayStart.toISOString());
+      if ((count || 0) + selectedCustomers.length > 100) {
+        showToast(`Daily limit reached. You've sent ${count}/100 messages today.`, "error");
+        setSending(false); return;
+      }
       const payload = {
         customers: selectedCustomers.map(c => ({
           ...c,
@@ -433,6 +505,7 @@ function SendPage({ user, business, showToast }) {
         body: msg.body,
         vars,
         businessName: business?.name || "Remind Zen",
+        businessId: user.id,
       };
       const res = await fetch(`${API}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -570,8 +643,14 @@ function SendPage({ user, business, showToast }) {
               Sending to {selected.length} customer{selected.length > 1 ? "s" : ""} · {usePreferred ? "using each customer's preferred channel" : overrideChannel === "both" ? "Email + SMS" : overrideChannel.toUpperCase()}
             </p>
             {msg.subject && <p style={{ margin: "0 0 8px", fontSize: 14 }}><strong>Subject:</strong> {msg.subject}</p>}
-            <div style={{ background: "#fff", borderRadius: 8, padding: "14px 16px", border: "1px solid #eee", fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap", color: "#333" }}>
-              {resolveBody(msg.body)}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {customers.filter(c => selected.includes(c.id)).slice(0, 3).map(c => (
+                <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "12px 16px", border: "1px solid #eee", fontSize: 13, lineHeight: 1.7, color: "#333" }}>
+                  <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4, fontWeight: 500 }}>Preview for {c.name}</div>
+                  <div style={{ whiteSpace: "pre-wrap" }}>{resolveBody(msg.body, c.name)}</div>
+                </div>
+              ))}
+              {selected.length > 3 && <div style={{ fontSize: 12, color: "#aaa", textAlign: "center" }}>+ {selected.length - 3} more recipients</div>}
             </div>
             <div style={{ marginTop: 12, padding: "10px 14px", background: "#f0f0f0", borderRadius: 8, fontSize: 12, color: "#888" }}>
               — Sent by Remind Zen on behalf of {business?.name || "your business"}
@@ -736,6 +815,54 @@ function HistoryPage({ user }) {
   );
 }
 
+
+// ── Delete Account Section ──
+
+function DeleteAccountSection({ user }) {
+  const [step, setStep] = useState("idle");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRequestDelete = () => setStep("confirm");
+
+  const handleConfirmDelete = async () => {
+    if (confirmEmail.toLowerCase() !== user.email.toLowerCase()) {
+      setError("Email doesn't match. Please try again."); return;
+    }
+    setDeleting(true);
+    try {
+      await supabase.from("send_history").delete().eq("business_id", user.id);
+      await supabase.from("schedules").delete().eq("business_id", user.id);
+      await supabase.from("customers").delete().eq("business_id", user.id);
+      await supabase.from("feedback").delete().eq("business_id", user.id);
+      await supabase.from("businesses").delete().eq("id", user.id);
+      await supabase.auth.signOut();
+      window.location.reload();
+    } catch (e) {
+      setError("Deletion failed: " + e.message);
+      setDeleting(false);
+    }
+  };
+
+  if (step === "idle") return (
+    <button onClick={handleRequestDelete} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>Delete my account</button>
+  );
+
+  return (
+    <div style={{ background: "#FCEBEB", borderRadius: 10, padding: "16px 20px" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 500, color: "#A32D2D" }}>Are you sure? This will permanently delete all your customers, schedules, and history.</p>
+      <p style={{ margin: "0 0 12px", fontSize: 13, color: "#A32D2D" }}>Type your email address to confirm: <strong>{user.email}</strong></p>
+      <input style={{ ...inputStyle, marginBottom: 12, background: "#fff" }} placeholder="Enter your email" value={confirmEmail} onChange={e => { setConfirmEmail(e.target.value); setError(""); }} />
+      {error && <div style={{ color: "#A32D2D", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => { setStep("idle"); setConfirmEmail(""); setError(""); }} style={btnStyle(false)}>Cancel</button>
+        <button onClick={handleConfirmDelete} disabled={deleting} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>{deleting ? "Deleting..." : "Permanently delete account"}</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Settings Page ──
 
 function SettingsPage({ user, business, setBusiness, showToast }) {
@@ -760,6 +887,25 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
     const { error } = await supabase.auth.updateUser({ password: passwords.newPass });
     if (!error) { showToast("Password updated", "success"); setChangingPassword(false); setPasswords({ newPass: "", confirm: "" }); }
     else setPwError(error.message);
+  };
+
+  const [tagLibrary, setTagLibrary] = useState(() => JSON.parse(localStorage.getItem("tagLibrary") || '["VIP","Monthly Service","New Customer","Lawn Care","Hair Care","Follow Up"]'));
+  const [newTag, setNewTag] = useState("");
+
+  const addLibraryTag = () => {
+    const t = newTag.trim();
+    if (!t || tagLibrary.includes(t)) return;
+    const updated = [...tagLibrary, t];
+    setTagLibrary(updated);
+    localStorage.setItem("tagLibrary", JSON.stringify(updated));
+    setNewTag("");
+    showToast("Tag added to library", "success");
+  };
+
+  const removeLibraryTag = (tag) => {
+    const updated = tagLibrary.filter(t => t !== tag);
+    setTagLibrary(updated);
+    localStorage.setItem("tagLibrary", JSON.stringify(updated));
   };
 
   const handleSignOut = async () => {
@@ -796,7 +942,9 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
         )}
       </div>
 
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px" }}>
+      <TagLibrarySection user={user} showToast={showToast} />
+
+      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#A32D2D" }}>Sign out</h3>
         <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>You'll need to sign back in to access your account.</p>
         <button onClick={handleSignOut} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>Sign out</button>
@@ -806,6 +954,562 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
 }
 
 
+
+
+// ── Tag Library Section (used inside Settings) ──
+
+function TagLibrarySection({ user, showToast }) {
+  const [tags, setTags] = useState([]);
+  const [input, setInput] = useState("");
+
+  useEffect(() => {
+    supabase.from("tag_library").select("tag").eq("business_id", user.id).order("tag")
+      .then(({ data }) => setTags((data || []).map(r => r.tag)));
+  }, []);
+
+  const addTag = async () => {
+    const tag = input.trim();
+    if (!tag || tags.includes(tag)) return;
+    await supabase.from("tag_library").insert({ business_id: user.id, tag });
+    setTags([...tags, tag].sort());
+    setInput("");
+    showToast(`Tag "${tag}" added to library`, "success");
+  };
+
+  const removeTag = async (tag) => {
+    await supabase.from("tag_library").delete().eq("business_id", user.id).eq("tag", tag);
+    setTags(tags.filter(t => t !== tag));
+    showToast(`Tag "${tag}" removed`, "success");
+  };
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
+      <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>Tag library</h3>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Define preset tags your team can pick from. Custom tags can still be added on the fly when editing customers.</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+        {tags.length === 0 && <span style={{ fontSize: 13, color: "#ccc" }}>No preset tags yet</span>}
+        {tags.map(tag => (
+          <span key={tag} style={{ background: "#EEEDFE", color: "#3C3489", fontSize: 13, padding: "4px 12px", borderRadius: 99, display: "flex", alignItems: "center", gap: 6 }}>
+            {tag}
+            <button onClick={() => removeTag(tag)} style={{ background: "none", border: "none", cursor: "pointer", color: "#3C3489", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input style={{ ...inputStyle, marginBottom: 0, flex: 1 }} placeholder="New tag (e.g. Monthly Service, VIP)" value={input}
+          onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addTag()} />
+        <button onClick={addTag} style={btnStyle(true)}>Add</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Account Deletion Section (used inside Settings) ──
+
+function AccountDeletionSection({ user, showToast }) {
+  const [step, setStep] = useState("idle");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (confirmEmail.toLowerCase() !== user.email.toLowerCase()) {
+      showToast("Email doesn't match", "error"); return;
+    }
+    setDeleting(true);
+    try {
+      await supabase.from("send_history").delete().eq("business_id", user.id);
+      await supabase.from("schedules").delete().eq("business_id", user.id);
+      await supabase.from("customers").delete().eq("business_id", user.id);
+      await supabase.from("tag_library").delete().eq("business_id", user.id);
+      await supabase.from("feedback").delete().eq("business_id", user.id);
+      await supabase.from("businesses").delete().eq("id", user.id);
+      await supabase.auth.signOut();
+      window.location.reload();
+    } catch (e) {
+      showToast("Deletion failed: " + e.message, "error");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #f7c1c1", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
+      <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#A32D2D" }}>Delete account</h3>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Permanently delete your account and all associated data including customers, schedules, and send history. This cannot be undone.</p>
+      {step === "idle" && (
+        <button onClick={() => setStep("confirm")} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>Delete my account</button>
+      )}
+      {step === "confirm" && (
+        <div>
+          <p style={{ fontSize: 13, color: "#A32D2D", marginBottom: 10, fontWeight: 500 }}>Type your email address to confirm deletion:</p>
+          <input style={{ ...inputStyle, borderColor: "#f7c1c1" }} placeholder={user.email} value={confirmEmail} onChange={e => setConfirmEmail(e.target.value)} />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => { setStep("idle"); setConfirmEmail(""); }} style={btnStyle(false)}>Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} style={{ ...btnStyle(true), background: "#A32D2D" }}>
+              {deleting ? "Deleting..." : "Permanently delete account"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Feedback Page ──
+
+function FeedbackPage({ user, business, showToast }) {
+  const [form, setForm] = useState({ type: "bug", subject: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.subject.trim() || !form.message.trim()) return;
+    setSubmitting(true);
+    try {
+      await supabase.from("feedback").insert({
+        business_id: user.id,
+        business_name: business?.name || "",
+        email: user.email,
+        type: form.type,
+        subject: form.subject,
+        message: form.message,
+      });
+      setSubmitted(true);
+      showToast("Feedback submitted — thank you!", "success");
+    } catch (e) {
+      showToast("Failed to submit feedback", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div style={{ maxWidth: 560, textAlign: "center", padding: "60px 0" }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>🙏</div>
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>Thank you for your feedback!</h2>
+        <p style={{ color: "#aaa", fontSize: 14, margin: "0 0 24px" }}>We review every submission and use it to improve Remind Zen.</p>
+        <button onClick={() => { setSubmitted(false); setForm({ type: "bug", subject: "", message: "" }); }} style={btnStyle(false)}>Submit another</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        {[["bug", "🐛 Bug report"], ["feature", "✨ Feature request"], ["other", "💬 Other"]].map(([val, label]) => (
+          <button key={val} onClick={() => setForm({ ...form, type: val })} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: form.type === val ? "#185FA5" : "#f0f0f0", color: form.type === val ? "#fff" : "#555", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px" }}>
+        <input style={inputStyle} placeholder="Subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+        <textarea style={{ ...inputStyle, minHeight: 140, resize: "vertical" }} placeholder={form.type === "bug" ? "Describe the bug — what happened, and what did you expect to happen?" : form.type === "feature" ? "Describe the feature you'd like to see and why it would be helpful." : "What's on your mind?"} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} />
+        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Submitting as {user.email} · {business?.name}</div>
+        <button onClick={handleSubmit} disabled={submitting || !form.subject.trim() || !form.message.trim()} style={{ ...btnStyle(true), opacity: (!form.subject.trim() || !form.message.trim()) ? 0.4 : 1 }}>
+          {submitting ? "Submitting..." : "Submit feedback"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin Page ──
+
+function AdminPage() {
+  const [businesses, setBusinesses] = useState([]);
+  const [feedback, setFeedback] = useState([]);
+  const [tab, setTab] = useState("businesses");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from("businesses").select("*").order("created_at", { ascending: false }),
+      supabase.from("feedback").select("*").order("created_at", { ascending: false }),
+    ]).then(([{ data: b }, { data: f }]) => {
+      setBusinesses(b || []);
+      setFeedback(f || []);
+      setLoading(false);
+    });
+  }, []);
+
+  const toggleSuspend = async (b) => {
+    await supabase.from("businesses").update({ suspended: !b.suspended }).eq("id", b.id);
+    setBusinesses(businesses.map(x => x.id === b.id ? { ...x, suspended: !x.suspended } : x));
+  };
+
+  const markRead = async (f) => {
+    await supabase.from("feedback").update({ read: true }).eq("id", f.id);
+    setFeedback(feedback.map(x => x.id === f.id ? { ...x, read: true } : x));
+  };
+
+  const unreadCount = feedback.filter(f => !f.read).length;
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        {[["businesses", `Businesses (${businesses.length})`], ["feedback", `Feedback${unreadCount > 0 ? ` (${unreadCount} new)` : ""}`]].map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: tab === key ? "#185FA5" : "#f0f0f0", color: tab === key ? "#fff" : "#555", fontWeight: 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading...</div> : null}
+
+      {!loading && tab === "businesses" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {businesses.map(b => (
+            <div key={b.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, opacity: b.suspended ? 0.6 : 1 }}>
+              <Avatar name={b.name || b.email} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{b.name || "(no name)"}</div>
+                <div style={{ fontSize: 13, color: "#888" }}>{b.email}</div>
+                <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Joined {new Date(b.created_at).toLocaleDateString()}</div>
+              </div>
+              {b.suspended && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#A32D2D", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>Suspended</span>}
+              <button onClick={() => toggleSuspend(b)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 14px", color: b.suspended ? "#3B6D11" : "#A32D2D", borderColor: b.suspended ? "#C0DD97" : "#f7c1c1" }}>
+                {b.suspended ? "Reinstate" : "Suspend"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && tab === "feedback" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {feedback.length === 0 && <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No feedback yet.</p>}
+          {feedback.map(f => (
+            <div key={f.id} style={{ background: f.read ? "#fff" : "#f0f6ff", border: `1px solid ${f.read ? "#f0f0f0" : "#b5d4f4"}`, borderRadius: 12, padding: "16px 20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{f.subject}</span>
+                  <span style={{ marginLeft: 10, fontSize: 11, background: f.type === "bug" ? "#FCEBEB" : f.type === "feature" ? "#EEEDFE" : "#F1EFE8", color: f.type === "bug" ? "#A32D2D" : f.type === "feature" ? "#3C3489" : "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{f.type}</span>
+                  {!f.read && <span style={{ marginLeft: 8, fontSize: 11, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>New</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "#aaa" }}>{new Date(f.created_at).toLocaleDateString()}</div>
+              </div>
+              <div style={{ fontSize: 13, color: "#444", marginBottom: 8, lineHeight: 1.6 }}>{f.message}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 12, color: "#aaa" }}>{f.business_name} · {f.email}</div>
+                {!f.read && <button onClick={() => markRead(f)} style={{ ...btnStyle(false), fontSize: 12, padding: "4px 12px" }}>Mark as read</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Onboarding Wizard ──
+
+function OnboardingWizard({ user, onComplete }) {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({ name: "", email: "", phone: "", preferred_channel: "email" });
+  const [saving, setSaving] = useState(false);
+
+  const handleAddCustomer = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    await supabase.from("customers").insert({ ...form, business_id: user.id });
+    setSaving(false);
+    setStep(3);
+  };
+
+  const skipToApp = async () => {
+    await supabase.from("businesses").update({ onboarded: true }).eq("id", user.id);
+    onComplete();
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: "40px 36px", width: "100%", maxWidth: 480, boxShadow: "0 2px 24px rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 32 }}>
+          {[1,2,3].map(n => (
+            <div key={n} style={{ width: 28, height: 28, borderRadius: "50%", background: step >= n ? "#185FA5" : "#f0f0f0", color: step >= n ? "#fff" : "#aaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 600 }}>
+              {step > n ? "✓" : n}
+            </div>
+          ))}
+        </div>
+
+        {step === 1 && (
+          <div style={{ textAlign: "center" }}>
+            <img src={logo} alt="Remind Zen" style={{ width: 80, marginBottom: 16 }} />
+            <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>Welcome to Remind Zen!</h2>
+            <p style={{ color: "#888", fontSize: 14, margin: "0 0 32px", lineHeight: 1.7 }}>Let's get you set up in 3 quick steps. It only takes a minute.</p>
+            <button onClick={() => setStep(2)} style={{ ...btnStyle(true), width: "100%", marginBottom: 12 }}>Get started →</button>
+            <button onClick={skipToApp} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13 }}>Skip and go to the app</button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700 }}>Add your first customer</h2>
+            <p style={{ color: "#aaa", fontSize: 13, margin: "0 0 20px" }}>You can add more later — just start with one to try it out.</p>
+            <input style={inputStyle} placeholder="Full name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            <input style={inputStyle} placeholder="Email address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+            <input style={inputStyle} placeholder="Phone number (+1XXXXXXXXXX)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+            <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Preferred channel</label>
+            <select style={{ ...inputStyle, cursor: "pointer" }} value={form.preferred_channel} onChange={e => setForm({ ...form, preferred_channel: e.target.value })}>
+              <option value="email">Email</option>
+              <option value="sms">SMS</option>
+              <option value="both">Email + SMS</option>
+            </select>
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <button onClick={skipToApp} style={btnStyle(false)}>Skip</button>
+              <button onClick={handleAddCustomer} disabled={saving || !form.name.trim()} style={{ ...btnStyle(true), flex: 1, opacity: !form.name.trim() ? 0.4 : 1 }}>
+                {saving ? "Adding..." : "Add customer →"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>You're all set!</h2>
+            <p style={{ color: "#888", fontSize: 14, margin: "0 0 8px", lineHeight: 1.7 }}>Your first customer has been added. Head to <strong>Send Reminder</strong> to send your first message, or set up a <strong>Schedule</strong> for automatic recurring reminders.</p>
+            <p style={{ color: "#aaa", fontSize: 13, margin: "0 0 28px" }}>You can always add more customers, templates, and schedules from the main nav.</p>
+            <button onClick={skipToApp} style={{ ...btnStyle(true), width: "100%" }}>Go to the app →</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+// ── Onboarding Wizard ──
+
+function OnboardingWizard({ user, onComplete }) {
+  const [step, setStep] = useState(1);
+  const steps = ["Welcome", "Add a customer", "Send a test", "You're ready"];
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f7f8fa", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: "40px 36px", width: "100%", maxWidth: 480, boxShadow: "0 2px 24px rgba(0,0,0,0.07)" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+          {steps.map((s, i) => (
+            <div key={s} style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: step > i + 1 ? "#185FA5" : step === i + 1 ? "#185FA5" : "#f0f0f0", color: step >= i + 1 ? "#fff" : "#aaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600 }}>
+                {step > i + 1 ? "✓" : i + 1}
+              </div>
+              {i < steps.length - 1 && <div style={{ width: 32, height: 2, background: step > i + 1 ? "#185FA5" : "#f0f0f0" }} />}
+            </div>
+          ))}
+        </div>
+
+        {step === 1 && (
+          <div style={{ textAlign: "center" }}>
+            <img src={logo} alt="Remind Zen" style={{ width: 80, marginBottom: 16 }} />
+            <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>Welcome to Remind Zen!</h2>
+            <p style={{ margin: "0 0 28px", color: "#888", lineHeight: 1.7 }}>Send email and SMS reminders to your customers in seconds. Let's get you set up in 3 quick steps.</p>
+            <button onClick={() => setStep(2)} style={{ ...btnStyle(true), width: "100%" }}>Get started →</button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Add your first customer</h2>
+            <p style={{ margin: "0 0 24px", color: "#888", fontSize: 14 }}>Head to the Customers tab and click "+ Add Customer" to add someone. You can also import a CSV file if you have an existing list.</p>
+            <div style={{ background: "#f0f6ff", borderRadius: 10, padding: "16px 20px", marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#185FA5", marginBottom: 8 }}>💡 Tip</div>
+              <div style={{ fontSize: 13, color: "#444" }}>Add your own phone number and email first so you can test reminders on yourself before sending to real customers.</div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setStep(3)} style={{ ...btnStyle(false), flex: 1 }}>Skip</button>
+              <button onClick={() => setStep(3)} style={{ ...btnStyle(true), flex: 2 }}>I've added a customer →</button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Send a test reminder</h2>
+            <p style={{ margin: "0 0 24px", color: "#888", fontSize: 14 }}>Go to Send Reminder, select yourself as the customer, pick a template, and hit send. Check that you receive the email or SMS.</p>
+            <div style={{ background: "#EAF3DE", borderRadius: 10, padding: "16px 20px", marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#3B6D11", marginBottom: 8 }}>✓ What to check</div>
+              <div style={{ fontSize: 13, color: "#444", lineHeight: 1.7 }}>Email arrives in inbox (not spam) · SMS delivers within 30 seconds · Customer name appears correctly in the message</div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setStep(4)} style={{ ...btnStyle(false), flex: 1 }}>Skip</button>
+              <button onClick={() => setStep(4)} style={{ ...btnStyle(true), flex: 2 }}>Test sent successfully →</button>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+            <h2 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>You're all set!</h2>
+            <p style={{ margin: "0 0 12px", color: "#888", lineHeight: 1.7 }}>You're ready to start sending reminders. A few things to explore next:</p>
+            <div style={{ textAlign: "left", background: "#f9f9f9", borderRadius: 10, padding: "16px 20px", marginBottom: 28 }}>
+              {["Set up a recurring schedule for automatic reminders", "Import your full customer list via CSV", "Create custom message templates", "Tag customers to send to specific groups"].map(tip => (
+                <div key={tip} style={{ display: "flex", gap: 10, marginBottom: 8, fontSize: 13, color: "#444" }}>
+                  <span style={{ color: "#185FA5", flexShrink: 0 }}>→</span> {tip}
+                </div>
+              ))}
+            </div>
+            <button onClick={onComplete} style={{ ...btnStyle(true), width: "100%" }}>Go to my dashboard</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Feedback Page ──
+
+function FeedbackPage({ user, business, showToast }) {
+  const [form, setForm] = useState({ type: "bug", subject: "", message: "" });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.subject.trim() || !form.message.trim()) { showToast("Please fill in all fields", "error"); return; }
+    setSending(true);
+    try {
+      await supabase.from("feedback").insert({
+        business_id: user.id,
+        business_name: business?.name || user.email,
+        type: form.type,
+        subject: form.subject,
+        message: form.message,
+      });
+      const res = await fetch(`${API}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, businessName: business?.name || user.email, email: user.email }),
+      });
+      setSent(true);
+      showToast("Feedback sent!", "success");
+    } catch { showToast("Failed to send feedback", "error"); }
+    finally { setSending(false); }
+  };
+
+  if (sent) return (
+    <div style={{ textAlign: "center", padding: "60px 0" }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>🙏</div>
+      <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>Thank you!</h2>
+      <p style={{ color: "#888", marginBottom: 24 }}>Your feedback has been received. We review every submission.</p>
+      <button onClick={() => { setSent(false); setForm({ type: "bug", subject: "", message: "" }); }} style={btnStyle(false)}>Send more feedback</button>
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px" }}>
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: "#888" }}>Found a bug or have an idea? We'd love to hear from you. Every submission goes directly to the Remind Zen team.</p>
+        <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Type of feedback</label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {[["bug", "🐛 Bug report"], ["feature", "💡 Feature request"], ["other", "💬 Other"]].map(([val, label]) => (
+            <button key={val} onClick={() => setForm({ ...form, type: val })} style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: form.type === val ? "#185FA5" : "#f0f0f0", color: form.type === val ? "#fff" : "#555", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
+          ))}
+        </div>
+        <input style={inputStyle} placeholder="Subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+        <textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} placeholder="Describe the issue or idea in as much detail as possible..." value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} />
+        <button onClick={handleSubmit} disabled={sending} style={{ ...btnStyle(true), minWidth: 140 }}>{sending ? "Sending..." : "Send Feedback"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin Page ──
+
+function AdminPage({ user, showToast }) {
+  const [businesses, setBusinesses] = useState([]);
+  const [feedback, setFeedback] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("businesses");
+
+  useEffect(() => {
+    if (user.email !== ADMIN_EMAIL) return;
+    Promise.all([
+      supabase.from("businesses").select("*").order("created_at", { ascending: false }),
+      supabase.from("feedback").select("*").order("created_at", { ascending: false }),
+    ]).then(([{ data: b }, { data: f }]) => {
+      setBusinesses(b || []);
+      setFeedback(f || []);
+      setLoading(false);
+    });
+  }, []);
+
+  const handleSuspend = async (id, name) => {
+    await supabase.from("businesses").update({ suspended: true }).eq("id", id);
+    setBusinesses(businesses.map(b => b.id === id ? { ...b, suspended: true } : b));
+    showToast(`${name} suspended`, "success");
+  };
+
+  const handleUnsuspend = async (id, name) => {
+    await supabase.from("businesses").update({ suspended: false }).eq("id", id);
+    setBusinesses(businesses.map(b => b.id === id ? { ...b, suspended: false } : b));
+    showToast(`${name} reactivated`, "success");
+  };
+
+  if (user.email !== ADMIN_EMAIL) return <div style={{ color: "#A32D2D", padding: "40px 0" }}>Access denied.</div>;
+
+  const stats = {
+    total: businesses.length,
+    active: businesses.filter(b => !b.suspended).length,
+    suspended: businesses.filter(b => b.suspended).length,
+    feedback: feedback.length,
+    bugs: feedback.filter(f => f.type === "bug").length,
+    features: feedback.filter(f => f.type === "feature").length,
+  };
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
+        {[["Businesses", stats.total, "#E6F1FB", "#185FA5"], ["Active", stats.active, "#EAF3DE", "#3B6D11"], ["Suspended", stats.suspended, "#FCEBEB", "#A32D2D"]].map(([l, v, bg, col]) => (
+          <div key={l} style={{ background: bg, borderRadius: 12, padding: "16px 20px" }}>
+            <div style={{ fontSize: 12, color: col, fontWeight: 500, marginBottom: 6 }}>{l}</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: col }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {[["businesses", "Businesses"], ["feedback", `Feedback (${stats.feedback})`]].map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: tab === key ? "#185FA5" : "#f0f0f0", color: tab === key ? "#fff" : "#555", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
+        ))}
+      </div>
+
+      {loading ? <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading...</div> : (
+        tab === "businesses" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {businesses.map(b => (
+              <div key={b.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, opacity: b.suspended ? 0.6 : 1 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{b.name || "Unnamed"}</div>
+                  <div style={{ fontSize: 12, color: "#aaa" }}>{b.email} · Joined {new Date(b.created_at).toLocaleDateString()}</div>
+                </div>
+                {b.suspended && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#A32D2D", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>Suspended</span>}
+                {b.suspended
+                  ? <button onClick={() => handleUnsuspend(b.id, b.name)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 12px" }}>Reactivate</button>
+                  : <button onClick={() => handleSuspend(b.id, b.name)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 12px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Suspend</button>
+                }
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {feedback.length === 0 ? <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No feedback yet.</p> : feedback.map(f => (
+              <div key={f.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: f.type === "bug" ? "#FCEBEB" : f.type === "feature" ? "#EAF3DE" : "#E6F1FB", color: f.type === "bug" ? "#A32D2D" : f.type === "feature" ? "#3B6D11" : "#185FA5" }}>{f.type}</span>
+                  <span style={{ fontWeight: 500, fontSize: 14 }}>{f.subject}</span>
+                </div>
+                <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>{f.message}</div>
+                <div style={{ fontSize: 12, color: "#aaa" }}>{f.business_name} · {new Date(f.created_at).toLocaleDateString()}</div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
 
 // ── Schedules Page ──
 
@@ -1090,6 +1794,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("Customers");
   const [toast, setToast] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1108,6 +1813,13 @@ export default function App() {
     const { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
     setBusiness(data || {});
     setAuthLoading(false);
+    const seen = localStorage.getItem("onboarding_complete");
+    if (!seen) setShowOnboarding(true);
+  };
+
+  const completeOnboarding = async () => {
+    await supabase.from("businesses").update({ onboarded: true }).eq("id", user.id);
+    setBusiness(prev => ({ ...prev, onboarded: true }));
   };
 
   const showToast = (msg, type = "success") => setToast({ msg, type });
@@ -1121,6 +1833,8 @@ export default function App() {
   }
 
   if (!user) return <AuthScreen onAuth={setUser} />;
+  if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
+  if (user && business && business.onboarded === false) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
 
   const pageTitles = {
     Customers: ["Customers", "Add, organize, and manage your customers"],
@@ -1135,6 +1849,10 @@ export default function App() {
     Settings: ["Settings", "Manage your Remind Zen account"],
 
     Legal: ["Legal", "Terms of service and privacy policy"],
+    Feedback: ["Send Feedback", "Report a bug or suggest a feature"],
+    Admin: ["Admin Panel", "Manage all Remind Zen accounts"],
+    Admin: ["Admin Panel", "Manage all Remind Zen accounts"],
+    Feedback: ["Feedback", "Submit a bug report or feature request"],
 
   };
 
@@ -1148,13 +1866,16 @@ export default function App() {
             <img src={logo} alt="Remind Zen" style={{ height: 36 }} />
           </div>
           <nav style={{ display: "flex", gap: 2, flex: 1 }}>
-            {NAV.map(n => (
+            {(user?.email === ADMIN_EMAIL ? ADMIN_NAV : NAV).map(n => (
               <button key={n} onClick={() => setPage(n)} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                 {n}
               </button>
             ))}
           </nav>
-          <div style={{ fontSize: 12, color: "#bbb" }}>{business?.name || user.email}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setPage("Feedback")} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Send feedback</button>
+            <div style={{ fontSize: 12, color: "#bbb" }}>{business?.name || user.email}</div>
+          </div>
         </div>
       </div>
 
@@ -1169,6 +1890,10 @@ export default function App() {
         {page === "Schedules" && <SchedulesPage user={user} showToast={showToast} />}
         {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} />}
         {page === "Legal" && <LegalPage />}
+        {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
+        {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
+        {page === "Admin" && user?.email === ADMIN_EMAIL && <AdminPage />}
+        {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
       </div>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}

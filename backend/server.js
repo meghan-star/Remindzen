@@ -14,6 +14,34 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+const DAILY_LIMIT = parseInt(process.env.DAILY_SEND_LIMIT || "100");
+const ADMIN_EMAIL = "remindzenco@gmail.com";
+
+// ── Rate limiting ──
+
+const sendCounts = {};
+
+function getRateLimitKey(businessId) {
+  const today = new Date().toISOString().split("T")[0];
+  return `${businessId}:${today}`;
+}
+
+function checkRateLimit(businessId) {
+  const key = getRateLimitKey(businessId);
+  const count = sendCounts[key] || 0;
+  return { allowed: count < DAILY_LIMIT, count, limit: DAILY_LIMIT, remaining: Math.max(0, DAILY_LIMIT - count) };
+}
+
+function incrementRateLimit(businessId, amount = 1) {
+  const key = getRateLimitKey(businessId);
+  sendCounts[key] = (sendCounts[key] || 0) + amount;
+  // Clean up old keys every hour
+  if (Math.random() < 0.01) {
+    const today = new Date().toISOString().split("T")[0];
+    Object.keys(sendCounts).forEach(k => { if (!k.includes(today)) delete sendCounts[k]; });
+  }
+}
+
 // ── Helpers ──
 
 function resolveVars(text, customer, vars = {}) {
@@ -73,9 +101,20 @@ async function sendSMS(customer, body, vars, businessName) {
 app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 app.post("/send", async (req, res) => {
-  const { customers, subject, body, vars = {}, businessName = "Remind Zen" } = req.body;
+  const { customers, subject, body, vars = {}, businessName = "Remind Zen", businessId } = req.body;
   if (!customers?.length) return res.status(400).json({ success: false, error: "No customers provided" });
   if (!body) return res.status(400).json({ success: false, error: "Message body is required" });
+
+  // Rate limit check
+  if (businessId) {
+    const { allowed, count, limit, remaining } = checkRateLimit(businessId);
+    if (!allowed) {
+      return res.status(429).json({ success: false, error: `Daily send limit of ${limit} messages reached. Resets at midnight.`, rateLimited: true, count, limit });
+    }
+    if (customers.length > remaining) {
+      return res.status(429).json({ success: false, error: `Only ${remaining} messages remaining today (limit: ${limit}/day).`, rateLimited: true, remaining, limit });
+    }
+  }
 
   const results = [];
   for (const customer of customers) {
@@ -93,24 +132,42 @@ app.post("/send", async (req, res) => {
     console.log(`[${new Date().toISOString()}] ${customer.name} (${channel}):`, r.success ? "✓" : "✗");
   }
 
+  if (businessId) incrementRateLimit(businessId, customers.length);
+
   res.json({ success: results.every(r => r.success), sent: results.filter(r => r.success).length, failed: results.filter(r => !r.success).length, results });
+});
+
+// Feedback endpoint — emails admin
+app.post("/feedback", async (req, res) => {
+  const { type, subject, message, businessName, email } = req.body;
+  try {
+    await sgMail.send({
+      to: ADMIN_EMAIL,
+      from: process.env.FROM_EMAIL,
+      subject: `[Remind Zen Feedback] ${type.toUpperCase()}: ${subject}`,
+      text: `From: ${businessName} (${email})\nType: ${type}\nSubject: ${subject}\n\n${message}`,
+      html: `<h3>New Feedback — ${type}</h3><p><strong>From:</strong> ${businessName} (${email})</p><p><strong>Subject:</strong> ${subject}</p><p>${message.replace(/\n/g, "<br/>")}</p>`,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Feedback email error:", err.message);
+    res.json({ success: false, error: err.message });
+  }
 });
 
 // ── Scheduler ──
 
-function shouldRunToday(schedule, now) {
+function shouldRunNow(schedule, now) {
   const [h, m] = (schedule.send_time || "09:00").split(":").map(Number);
   const sendMinutes = h * 60 + m;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   if (Math.abs(nowMinutes - sendMinutes) > 1) return false;
-
   if (schedule.cadence === "daily") return true;
   if (schedule.cadence === "weekly") return now.getDay() === parseInt(schedule.day_of_week || 1);
   if (schedule.cadence === "monthly") return now.getDate() === parseInt(schedule.day_of_month || 1);
   if (schedule.cadence === "interval") {
     if (!schedule.last_run_at) return true;
-    const last = new Date(schedule.last_run_at);
-    const daysSince = (now - last) / 86400000;
+    const daysSince = (now - new Date(schedule.last_run_at)) / 86400000;
     return daysSince >= parseInt(schedule.interval_days || 7);
   }
   return false;
@@ -124,21 +181,23 @@ async function runScheduler() {
     if (!schedules?.length) return;
 
     for (const schedule of schedules) {
-      if (!shouldRunToday(schedule, now)) continue;
+      if (!shouldRunNow(schedule, now)) continue;
+      const { data: business } = await supabase.from("businesses").select("name").eq("id", schedule.business_id).single();
 
-      // Get business info
-      const { data: business } = await supabase.from("businesses").select("name,email").eq("id", schedule.business_id).single();
+      // Check rate limit for scheduled sends
+      const { allowed, remaining } = checkRateLimit(schedule.business_id);
+      if (!allowed) { console.log(`[Scheduler] Skipping "${schedule.name}" — rate limit reached`); continue; }
 
-      // Get customers for this schedule
       let query = supabase.from("customers").select("*").eq("business_id", schedule.business_id).eq("unsubscribed", false);
       if (schedule.tag_filter) query = query.contains("tags", [schedule.tag_filter]);
       const { data: customers } = await query;
       if (!customers?.length) continue;
 
-      console.log(`[Scheduler] Running "${schedule.name}" for ${business?.name} — ${customers.length} customers`);
+      const toSend = customers.slice(0, remaining);
+      console.log(`[Scheduler] Running "${schedule.name}" — ${toSend.length} customers`);
 
       const historyRows = [];
-      for (const customer of customers) {
+      for (const customer of toSend) {
         const channel = schedule.channel === "preferred" ? (customer.preferred_channel || "email") : schedule.channel;
         let success = false, error = null;
         try {
@@ -149,24 +208,23 @@ async function runScheduler() {
         historyRows.push({ business_id: schedule.business_id, customer_id: customer.id, customer_name: customer.name, channel, subject: schedule.subject, body: schedule.body, status: success ? "sent" : "failed", error });
       }
 
+      incrementRateLimit(schedule.business_id, toSend.length);
       await supabase.from("send_history").insert(historyRows);
       await supabase.from("schedules").update({ last_run_at: now.toISOString() }).eq("id", schedule.id);
-      console.log(`[Scheduler] "${schedule.name}" complete — ${historyRows.filter(r => r.status === "sent").length} sent`);
+      console.log(`[Scheduler] "${schedule.name}" done — ${historyRows.filter(r => r.status === "sent").length} sent`);
     }
   } catch (err) {
     console.error("[Scheduler] Error:", err.message);
   }
 }
 
-// Run scheduler every minute
 setInterval(runScheduler, 60 * 1000);
-console.log("[Scheduler] Started — checking every minute");
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Remind Zen server running on http://localhost:${PORT}`);
-  console.log(`  SendGrid key:    ${process.env.SENDGRID_API_KEY ? "✓ set" : "✗ missing"}`);
-  console.log(`  Twilio SID:      ${process.env.TWILIO_ACCOUNT_SID ? "✓ set" : "✗ missing"}`);
-  console.log(`  Supabase URL:    ${process.env.SUPABASE_URL ? "✓ set" : "✗ missing"}`);
-  console.log(`  Supabase key:    ${process.env.SUPABASE_SERVICE_KEY ? "✓ set" : "✗ missing"}`);
+  console.log(`  Daily send limit: ${DAILY_LIMIT} messages/account`);
+  console.log(`  SendGrid key:     ${process.env.SENDGRID_API_KEY ? "✓" : "✗"}`);
+  console.log(`  Twilio SID:       ${process.env.TWILIO_ACCOUNT_SID ? "✓" : "✗"}`);
+  console.log(`  Supabase URL:     ${process.env.SUPABASE_URL ? "✓" : "✗"}`);
 });
