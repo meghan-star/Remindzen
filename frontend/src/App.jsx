@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "https://remindzen.onrender.com/";
+const API = "https://remindzen.onrender.com";
 
 const TEMPLATES = [
   { id: 1, name: "Appointment Reminder", channel: "both", subject: "Reminder: Your appointment tomorrow", body: "Hi {name}, this is a reminder that you have an appointment scheduled for {date} at {time}. Please reply to confirm or call us to reschedule. See you soon!" },
