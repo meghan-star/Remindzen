@@ -4,6 +4,7 @@ import logo from "./logo.png";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const ADMIN_EMAIL = "remindzenco@gmail.com";
+const ADMIN_UID = "2bd0487e-a317-4cbd-9871-70d87aacaf47";
 
 const TEMPLATES = [
   { id: 1, name: "Appointment Reminder", channel: "both", subject: "Reminder: Your appointment tomorrow", body: "Hi {name}, this is a reminder that you have an appointment scheduled for {date} at {time}. Please reply to confirm or call us to reschedule. See you soon!" },
@@ -1635,7 +1636,7 @@ export default function App() {
             <img src={logo} alt="Remind Zen" style={{ height: 36 }} />
           </div>
           <nav style={{ display: "flex", gap: 2, flex: 1 }}>
-            {(user?.email === ADMIN_EMAIL ? ADMIN_NAV : NAV).map(n => (
+            {(user?.id === ADMIN_UID ? ADMIN_NAV : NAV).map(n => (
               <button key={n} onClick={() => setPage(n)} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                 {n}
               </button>
@@ -1661,7 +1662,7 @@ export default function App() {
         {page === "Legal" && <LegalPage />}
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
         {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
-        {page === "Admin" && user?.email === ADMIN_EMAIL && <AdminPage />}
+        {page === "Admin" && user?.id === ADMIN_UID && <AdminPage />}
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
       </div>
 
