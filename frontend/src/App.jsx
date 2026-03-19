@@ -11,7 +11,7 @@ const TEMPLATES = [
   { id: 4, name: "Payment Due", channel: "sms", body: "Hi {name}, a friendly reminder that your payment of {amount} is due on {date}. Please contact us with any questions." },
 ];
 
-const NAV = ["Customers", "Send Reminder", "Templates", "History", "Settings", "Legal"];
+const NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Settings", "Legal"];
 
 // ── Shared UI ──
 
@@ -177,7 +177,9 @@ function CustomersPage({ user, showToast }) {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null });
+  const [activeTag, setActiveTag] = useState(null);
+  const [tagInput, setTagInput] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [] });
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -190,13 +192,13 @@ function CustomersPage({ user, showToast }) {
 
   const openAdd = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null });
+    setForm({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [] });
     setShowModal(true);
   };
 
   const openEdit = (c) => {
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null, tags: c.tags || [] });
     setShowModal(true);
   };
 
@@ -259,11 +261,15 @@ function CustomersPage({ user, showToast }) {
     if (!error) { showToast(c.unsubscribed ? `${c.name} resubscribed` : `${c.name} opted out`, "success"); loadCustomers(); }
   };
 
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search)
-  );
+  const allTags = [...new Set(customers.flatMap(c => c.tags || []))].sort();
+
+  const filtered = customers.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.email?.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone?.includes(search);
+    const matchesTag = !activeTag || (c.tags || []).includes(activeTag);
+    return matchesSearch && matchesTag;
+  });
 
   return (
     <div>
@@ -277,6 +283,19 @@ function CustomersPage({ user, showToast }) {
           <button onClick={openAdd} style={btnStyle(true)}>+ Add Customer</button>
         </div>
       </div>
+
+      {allTags.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+          <button onClick={() => setActiveTag(null)} style={{ padding: "4px 12px", borderRadius: 99, border: "none", background: !activeTag ? "#185FA5" : "#f0f0f0", color: !activeTag ? "#fff" : "#555", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+            All
+          </button>
+          {allTags.map(tag => (
+            <button key={tag} onClick={() => setActiveTag(activeTag === tag ? null : tag)} style={{ padding: "4px 12px", borderRadius: 99, border: "none", background: activeTag === tag ? "#185FA5" : "#f0f0f0", color: activeTag === tag ? "#fff" : "#555", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>Loading...</div>
@@ -297,6 +316,13 @@ function CustomersPage({ user, showToast }) {
                   {c.phone && <span>📱 {c.phone}</span>}
                 </div>
                 {c.notes && <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{c.notes}</div>}
+                {c.tags && c.tags.length > 0 && (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                    {c.tags.map(tag => (
+                      <span key={tag} style={{ fontSize: 11, background: "#EEEDFE", color: "#3C3489", padding: "1px 8px", borderRadius: 99, fontWeight: 500 }}>{tag}</span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                 <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
@@ -315,6 +341,20 @@ function CustomersPage({ user, showToast }) {
           <input style={inputStyle} placeholder="Email address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
           <input style={inputStyle} placeholder="Phone number (+1XXXXXXXXXX)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
           <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} placeholder="Notes (optional)" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Tags</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+            {(form.tags || []).map(tag => (
+              <span key={tag} style={{ background: "#EEEDFE", color: "#3C3489", fontSize: 12, padding: "3px 10px", borderRadius: 99, display: "flex", alignItems: "center", gap: 6 }}>
+                {tag}
+                <button onClick={() => setForm({ ...form, tags: form.tags.filter(t => t !== tag) })} style={{ background: "none", border: "none", cursor: "pointer", color: "#3C3489", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <input style={{ ...inputStyle, marginBottom: 0, flex: 1 }} placeholder="Add a tag (e.g. VIP, monthly)" value={tagInput} onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); e.preventDefault(); } }} />
+            <button onClick={() => { if (tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); }}} style={{ ...btnStyle(false), padding: "9px 16px" }}>Add</button>
+          </div>
           <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Preferred reminder channel</label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.preferred_channel} onChange={e => setForm({ ...form, preferred_channel: e.target.value })}>
             <option value="email">Email</option>
@@ -365,6 +405,7 @@ function SendPage({ user, business, showToast }) {
   const [sending, setSending] = useState(false);
   const [usePreferred, setUsePreferred] = useState(true);
   const [overrideChannel, setOverrideChannel] = useState("email");
+  const [tagFilter, setTagFilter] = useState(null);
 
   useEffect(() => {
     supabase.from("customers").select("*").eq("business_id", user.id).eq("unsubscribed", false).order("name")
@@ -445,15 +486,23 @@ function SendPage({ user, business, showToast }) {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <p style={{ margin: 0, color: "#888", fontSize: 14 }}>{selected.length} selected — opted-out customers are hidden</p>
-            <button onClick={() => setSelected(selected.length === customers.length ? [] : customers.map(c => c.id))} style={{ ...btnStyle(false), fontSize: 13, padding: "6px 14px" }}>
-              {selected.length === customers.length ? "Deselect All" : "Select All"}
+            <button onClick={() => { const visible = tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)) : customers; setSelected(selected.length === visible.length ? [] : visible.map(c => c.id)); }} style={{ ...btnStyle(false), fontSize: 13, padding: "6px 14px" }}>
+              {selected.length === (tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)).length : customers.length) ? "Deselect All" : "Select All"}
             </button>
           </div>
+          {[...new Set(customers.flatMap(c => c.tags || []))].length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              <button onClick={() => setTagFilter(null)} style={{ padding: "4px 12px", borderRadius: 99, border: "none", background: !tagFilter ? "#185FA5" : "#f0f0f0", color: !tagFilter ? "#fff" : "#555", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>All</button>
+              {[...new Set(customers.flatMap(c => c.tags || []))].sort().map(tag => (
+                <button key={tag} onClick={() => setTagFilter(tagFilter === tag ? null : tag)} style={{ padding: "4px 12px", borderRadius: 99, border: "none", background: tagFilter === tag ? "#185FA5" : "#f0f0f0", color: tagFilter === tag ? "#fff" : "#555", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>{tag}</button>
+              ))}
+            </div>
+          )}
           {customers.length === 0 ? (
             <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No customers yet. Add some from the Customers tab.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-              {customers.map(c => (
+              {(tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)) : customers).map(c => (
                 <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${selected.includes(c.id) ? "#185FA5" : "#f0f0f0"}`, background: selected.includes(c.id) ? "#f0f6ff" : "#fff", cursor: "pointer" }}>
                   <input type="checkbox" checked={selected.includes(c.id)} onChange={() => setSelected(selected.includes(c.id) ? selected.filter(x => x !== c.id) : [...selected, c.id])} style={{ width: 16, height: 16, cursor: "pointer" }} />
                   <Avatar name={c.name} />
@@ -757,6 +806,197 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
 }
 
 
+
+// ── Schedules Page ──
+
+function SchedulesPage({ user, showToast }) {
+  const [schedules, setSchedules] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [] });
+
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from("schedules").select("*").eq("business_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("customers").select("id,name,tags,preferred_channel").eq("business_id", user.id).eq("unsubscribed", false).order("name"),
+    ]).then(([{ data: s }, { data: c }]) => {
+      setSchedules(s || []);
+      setCustomers(c || []);
+      setLoading(false);
+    });
+    setTemplates(JSON.parse(localStorage.getItem("customTemplates") || "[]"));
+  }, []);
+
+  const allTags = [...new Set(customers.flatMap(c => c.tags || []))].sort();
+
+  const getNextRun = (schedule) => {
+    const now = new Date();
+    const [h, m] = (schedule.send_time || "09:00").split(":").map(Number);
+    let next = new Date();
+    next.setHours(h, m, 0, 0);
+    if (schedule.cadence === "daily") {
+      if (next <= now) next.setDate(next.getDate() + 1);
+    } else if (schedule.cadence === "weekly") {
+      const target = parseInt(schedule.day_of_week || 1);
+      const diff = (target - now.getDay() + 7) % 7 || 7;
+      next.setDate(now.getDate() + diff);
+      next.setHours(h, m, 0, 0);
+    } else if (schedule.cadence === "monthly") {
+      next.setDate(parseInt(schedule.day_of_month || 1));
+      if (next <= now) { next.setMonth(next.getMonth() + 1); next.setDate(parseInt(schedule.day_of_month || 1)); }
+    } else if (schedule.cadence === "interval") {
+      const last = schedule.last_run_at ? new Date(schedule.last_run_at) : now;
+      next = new Date(last.getTime() + parseInt(schedule.interval_days || 7) * 86400000);
+    }
+    return next;
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.body.trim()) return;
+    const { error } = await supabase.from("schedules").insert({
+      business_id: user.id,
+      name: form.name,
+      cadence: form.cadence,
+      day_of_week: form.cadence === "weekly" ? parseInt(form.day_of_week) : null,
+      day_of_month: form.cadence === "monthly" ? parseInt(form.day_of_month) : null,
+      interval_days: form.cadence === "interval" ? parseInt(form.interval_days) : null,
+      send_time: form.send_time,
+      channel: form.channel,
+      subject: form.subject,
+      body: form.body,
+      tag_filter: form.tag_filter || null,
+      active: true,
+    });
+    if (!error) {
+      showToast("Schedule created", "success");
+      setShowModal(false);
+      const { data } = await supabase.from("schedules").select("*").eq("business_id", user.id).order("created_at", { ascending: false });
+      setSchedules(data || []);
+    } else showToast("Failed to create schedule", "error");
+  };
+
+  const toggleActive = async (s) => {
+    await supabase.from("schedules").update({ active: !s.active }).eq("id", s.id);
+    setSchedules(schedules.map(x => x.id === s.id ? { ...x, active: !s.active } : x));
+    showToast(s.active ? "Schedule paused" : "Schedule resumed", "success");
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("schedules").delete().eq("id", id);
+    setSchedules(schedules.filter(s => s.id !== id));
+    showToast("Schedule deleted", "success");
+  };
+
+  const cadenceLabel = (s) => {
+    if (s.cadence === "daily") return `Daily at ${s.send_time}`;
+    if (s.cadence === "weekly") return `Every ${DAYS[s.day_of_week || 1]} at ${s.send_time}`;
+    if (s.cadence === "monthly") return `Monthly on the ${s.day_of_month}${["st","nd","rd"][((s.day_of_month||1)-1)%10] || "th"} at ${s.send_time}`;
+    if (s.cadence === "interval") return `Every ${s.interval_days} days at ${s.send_time}`;
+    return "";
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
+        <button onClick={() => setShowModal(true)} style={btnStyle(true)}>+ New Schedule</button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading...</div>
+      ) : schedules.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🗓</div>
+          <p style={{ margin: 0 }}>No schedules yet. Create one to start sending reminders automatically.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {schedules.map(s => (
+            <div key={s.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px", opacity: s.active ? 1 : 0.6 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>{s.name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: s.active ? "#EAF3DE" : "#F1EFE8", color: s.active ? "#3B6D11" : "#5F5E5A" }}>
+                      {s.active ? "Active" : "Paused"}
+                    </span>
+                    {s.tag_filter && <span style={{ fontSize: 11, background: "#EEEDFE", color: "#3C3489", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{s.tag_filter}</span>}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>{cadenceLabel(s)}</div>
+                  <div style={{ fontSize: 12, color: "#aaa" }}>{s.subject || s.body?.slice(0, 60) + "..."}</div>
+                  {s.active && <div style={{ fontSize: 12, color: "#185FA5", marginTop: 6 }}>Next run: {getNextRun(s).toLocaleDateString()} at {s.send_time}</div>}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button onClick={() => toggleActive(s)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 14px" }}>{s.active ? "Pause" : "Resume"}</button>
+                  <button onClick={() => handleDelete(s.id)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 14px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Delete</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <Modal title="New Schedule" onClose={() => setShowModal(false)}>
+          <input style={inputStyle} placeholder="Schedule name (e.g. Monthly lawn reminder) *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+
+          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Send to</label>
+          <select style={{ ...inputStyle, cursor: "pointer" }} value={form.tag_filter} onChange={e => setForm({ ...form, tag_filter: e.target.value })}>
+            <option value="">All customers</option>
+            {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+          </select>
+
+          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Cadence</label>
+          <select style={{ ...inputStyle, cursor: "pointer" }} value={form.cadence} onChange={e => setForm({ ...form, cadence: e.target.value })}>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="interval">Every X days</option>
+            <option value="monthly">Monthly</option>
+          </select>
+
+          {form.cadence === "weekly" && (
+            <select style={{ ...inputStyle, cursor: "pointer" }} value={form.day_of_week} onChange={e => setForm({ ...form, day_of_week: e.target.value })}>
+              {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+            </select>
+          )}
+          {form.cadence === "interval" && (
+            <input style={inputStyle} type="number" min="1" max="365" placeholder="Every how many days?" value={form.interval_days} onChange={e => setForm({ ...form, interval_days: e.target.value })} />
+          )}
+          {form.cadence === "monthly" && (
+            <select style={{ ...inputStyle, cursor: "pointer" }} value={form.day_of_month} onChange={e => setForm({ ...form, day_of_month: e.target.value })}>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map(d => <option key={d} value={d}>Day {d}</option>)}
+            </select>
+          )}
+
+          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Send time</label>
+          <input style={inputStyle} type="time" value={form.send_time} onChange={e => setForm({ ...form, send_time: e.target.value })} />
+
+          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Channel</label>
+          <select style={{ ...inputStyle, cursor: "pointer" }} value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })}>
+            <option value="preferred">Each customer's preferred channel</option>
+            <option value="email">Email only</option>
+            <option value="sms">SMS only</option>
+            <option value="both">Email + SMS</option>
+          </select>
+
+          {(form.channel === "email" || form.channel === "both" || form.channel === "preferred") && (
+            <input style={inputStyle} placeholder="Email subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+          )}
+          <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} placeholder="Message body... Use {name}, {date}, {time}, {amount}" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
+
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+            <button onClick={() => setShowModal(false)} style={btnStyle(false)}>Cancel</button>
+            <button onClick={handleSave} style={btnStyle(true)}>Create Schedule</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ── Legal Page ──
 
 function LegalPage() {
@@ -883,11 +1123,17 @@ export default function App() {
   if (!user) return <AuthScreen onAuth={setUser} />;
 
   const pageTitles = {
-    Customers: ["Customers", "Manage your customer list"],
-    "Send Reminder": ["Send Reminder", "Send email and SMS reminders to your customers"],
-    Templates: ["Templates", "Reusable message templates"],
-    History: ["Send History", "A log of all messages sent from your account"],
+    Customers: ["Customers", "Add, organize, and manage your customers"],
+
+    "Send Reminder": ["Send Reminder", "Send personalized email and SMS reminders in seconds"],
+
+    Templates: ["Templates", "Save time with reusable message templates"],
+
+    History: ["Send History", "Track every message sent, delivered, and failed"],
+    Schedules: ["Scheduled Reminders", "Set up automatic recurring reminders for your customers"],
+
     Settings: ["Settings", "Manage your Remind Zen account"],
+
     Legal: ["Legal", "Terms of service and privacy policy"],
 
   };
@@ -920,6 +1166,7 @@ export default function App() {
         {page === "Send Reminder" && <SendPage user={user} business={business} showToast={showToast} />}
         {page === "Templates" && <TemplatesPage showToast={showToast} />}
         {page === "History" && <HistoryPage user={user} />}
+        {page === "Schedules" && <SchedulesPage user={user} showToast={showToast} />}
         {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} />}
         {page === "Legal" && <LegalPage />}
       </div>
