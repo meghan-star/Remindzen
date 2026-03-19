@@ -177,7 +177,7 @@ function CustomersPage({ user, showToast }) {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false });
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -190,13 +190,13 @@ function CustomersPage({ user, showToast }) {
 
   const openAdd = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", notes: "", preferred_channel: "email" });
+    setForm({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false });
     setShowModal(true);
   };
 
   const openEdit = (c) => {
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email" });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false });
     setShowModal(true);
   };
 
@@ -261,9 +261,6 @@ function CustomersPage({ user, showToast }) {
                 {c.unsubscribed && <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: "#F1EFE8", color: "#5F5E5A" }}>Opted out</span>}
               </div>
               <button onClick={() => openEdit(c)} title="Edit" style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 15, padding: 4 }}>✏️</button>
-              <button onClick={() => toggleUnsubscribe(c)} title={c.unsubscribed ? "Resubscribe" : "Mark as opted out"} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 15, padding: 4 }}>
-                {c.unsubscribed ? "✅" : "🚫"}
-              </button>
               <button onClick={() => handleDelete(c.id, c.name)} title="Delete" style={{ background: "none", border: "none", color: "#ddd", cursor: "pointer", fontSize: 15, padding: 4 }}>🗑</button>
             </div>
           ))}
@@ -282,6 +279,21 @@ function CustomersPage({ user, showToast }) {
             <option value="sms">SMS</option>
             <option value="both">Email + SMS</option>
           </select>
+          {editingCustomer && (
+            <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 4, paddingTop: 16, marginBottom: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                <input type="checkbox" checked={form.unsubscribed} onChange={e => setForm({ ...form, unsubscribed: e.target.checked })} style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#e24b4a" }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: form.unsubscribed ? "#A32D2D" : "#1a1a1a" }}>
+                    {form.unsubscribed ? "Customer is opted out" : "Opt out of reminders"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>
+                    {form.unsubscribed ? "This customer will not receive any reminders. Uncheck to resubscribe." : "Check this to stop sending reminders to this customer."}
+                  </div>
+                </div>
+              </label>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
             <button onClick={() => setShowModal(false)} style={btnStyle(false)}>Cancel</button>
             <button onClick={handleSave} style={btnStyle(true)}>{editingCustomer ? "Save Changes" : "Add Customer"}</button>
