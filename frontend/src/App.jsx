@@ -1757,7 +1757,7 @@ function BillingPage({ user, business }) {
             <span style={{ fontWeight: 600, color: "#3B6D11" }}>Free trial active</span>
             <span style={{ color: "#3B6D11", fontSize: 14, marginLeft: 8 }}>{status.trialDaysLeft} day{status.trialDaysLeft !== 1 ? "s" : ""} remaining</span>
           </div>
-          <span style={{ fontSize: 13, color: "#3B6D11" }}>Subscribe before your trial ends to keep access</span>
+          <span style={{ fontSize: 13, color: "#3B6D11" }}>Your plan will activate automatically when the trial ends</span>
         </div>
       )}
 
