@@ -58,8 +58,8 @@ function Toast({ msg, type, onClose }) {
 
 function Modal({ title, onClose, children }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px" }}>
-      <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", width: "100%", maxWidth: 480, position: "relative", maxHeight: "90vh", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, padding: "0" }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px", width: "100%", maxWidth: 560, position: "relative", maxHeight: "92vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>{title}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888", lineHeight: 1 }}>×</button>
@@ -81,6 +81,17 @@ const btnStyle = (primary) => ({
   background: primary ? "#185FA5" : "#fff", color: primary ? "#fff" : "#444",
   fontWeight: 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
 });
+
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isMobile;
+}
 
 function PasswordStrength({ password }) {
   const len = password.length;
@@ -381,15 +392,15 @@ function CustomersPage({ user, showToast }) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, width: 280, marginBottom: 0 }} />
-        <div style={{ display: "flex", gap: 8 }}>
-          <label style={{ ...btnStyle(false), cursor: "pointer", display: "inline-flex", alignItems: "center" }}>
-            📥 Import CSV
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 8, flexWrap: "wrap" }}>
+        <input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 120, marginBottom: 0 }} />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <label style={{ ...btnStyle(false), cursor: "pointer", display: "inline-flex", alignItems: "center", fontSize: 13 }}>
+            📥 Import
             <input type="file" accept=".csv" style={{ display: "none" }} onChange={e => handleCSVImport(e.target.files[0])} />
           </label>
-          <button onClick={handleExportCSV} style={btnStyle(false)}>📤 Export CSV</button>
-          <button onClick={openAdd} style={btnStyle(true)}>+ Add Customer</button>
+          <button onClick={handleExportCSV} style={{ ...btnStyle(false), fontSize: 13 }}>📤 Export</button>
+          <button onClick={openAdd} style={{ ...btnStyle(true), fontSize: 13 }}>+ Add</button>
         </div>
       </div>
 
@@ -442,7 +453,7 @@ function CustomersPage({ user, showToast }) {
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
                 {c.unsubscribed && <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: "#F1EFE8", color: "#5F5E5A" }}>Opted out</span>}
               </div>
@@ -611,7 +622,7 @@ function SendPage({ user, business, showToast }) {
 
   return (
     <div>
-      <div style={{ display: "flex", marginBottom: 32, position: "relative" }}>
+      <div style={{ display: "flex", marginBottom: 24, position: "relative", gap: 4 }}>
         {steps.map((s, i) => {
           const n = i + 1;
           const active = step === n;
@@ -701,7 +712,7 @@ function SendPage({ user, business, showToast }) {
           </div>
 
           <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Fill in variables (optional)</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 20 }}>
             <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="{date}" value={vars.date} onChange={e => setVars({ ...vars, date: e.target.value })} />
             <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="{time}" value={vars.time} onChange={e => setVars({ ...vars, time: e.target.value })} />
             <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="{amount}" value={vars.amount} onChange={e => setVars({ ...vars, amount: e.target.value })} />
@@ -887,7 +898,7 @@ function HistoryPage({ user }) {
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 12, marginBottom: 28 }}>
         {[["Total sent", stats.total, "#E6F1FB", "#185FA5"], ["Delivered", stats.sent, "#EAF3DE", "#3B6D11"], ["Failed", stats.failed, "#FCEBEB", "#A32D2D"]].map(([label, val, bg, col]) => (
           <div key={label} style={{ background: bg, borderRadius: 12, padding: "16px 20px" }}>
             <div style={{ fontSize: 12, color: col, fontWeight: 500, marginBottom: 6 }}>{label}</div>
@@ -897,9 +908,9 @@ function HistoryPage({ user }) {
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <input placeholder="Search by customer or subject..." value={search} onChange={e => setSearch(e.target.value)}
-          style={{ ...inputStyle, flex: 1, minWidth: 200, marginBottom: 0 }} />
-        <div style={{ display: "flex", gap: 6 }}>
+        <input placeholder="Search history..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ ...inputStyle, flex: 1, minWidth: 140, marginBottom: 0 }} />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {[["all","All time"],["today","Today"],["week","This week"],["month","This month"]].map(([val, label]) => (
             <button key={val} onClick={() => setDateFilter(val)} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: dateFilter === val ? "#185FA5" : "#f0f0f0", color: dateFilter === val ? "#fff" : "#555", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
           ))}
@@ -925,8 +936,9 @@ function HistoryPage({ user }) {
               <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: h.status === "sent" ? "#EAF3DE" : "#FCEBEB", color: h.status === "sent" ? "#3B6D11" : "#A32D2D" }} title={h.error || ""}>
                 {h.status === "failed" && h.error ? "failed — hover for details" : h.status}
               </span>
-              <div style={{ fontSize: 12, color: "#bbb", whiteSpace: "nowrap" }}>
-                {new Date(h.sent_at).toLocaleDateString()} {new Date(h.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              <div style={{ fontSize: 12, color: "#bbb", whiteSpace: "nowrap", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                <span>{new Date(h.sent_at).toLocaleDateString()}</span>
+                <span style={{ fontSize: 11 }}>{new Date(h.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
               </div>
             </div>
           ))}
@@ -1035,7 +1047,7 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
   };
 
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div style={{ maxWidth: 560, width: "100%" }}>
       <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600 }}>Business information</h3>
         <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Business name</label>
@@ -1234,7 +1246,7 @@ function FeedbackPage({ user, business, showToast }) {
   }
 
   return (
-    <div style={{ maxWidth: 560 }}>
+    <div style={{ maxWidth: 560, width: "100%" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
         {[["bug", "🐛 Bug report"], ["feature", "✨ Feature request"], ["other", "💬 Other"]].map(([val, label]) => (
           <button key={val} onClick={() => setForm({ ...form, type: val })} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: form.type === val ? "#185FA5" : "#f0f0f0", color: form.type === val ? "#fff" : "#555", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
@@ -1544,9 +1556,9 @@ function SchedulesPage({ user, showToast }) {
                   <div style={{ fontSize: 12, color: "#aaa" }}>{s.subject || s.body?.slice(0, 60) + "..."}</div>
                   {s.active && <div style={{ fontSize: 12, color: "#185FA5", marginTop: 6 }}>Next run: {getNextRun(s).toLocaleDateString()} at {s.send_time}</div>}
                 </div>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  <button onClick={() => toggleActive(s)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 14px" }}>{s.active ? "Pause" : "Resume"}</button>
-                  <button onClick={() => handleDelete(s.id)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 14px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Delete</button>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+                  <button onClick={() => toggleActive(s)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 10px" }}>{s.active ? "Pause" : "Resume"}</button>
+                  <button onClick={() => handleDelete(s.id)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 10px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Delete</button>
                 </div>
               </div>
             </div>
@@ -1749,6 +1761,68 @@ function LegalPage() {
   );
 }
 
+
+// ── App Header ──
+
+function AppHeader({ page, setPage, user, business }) {
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const nav = user?.id === ADMIN_UID ? ADMIN_NAV : NAV;
+
+  return (
+    <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: isMobile ? "0 16px" : "0 32px", position: "relative" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 56, gap: isMobile ? 8 : 24 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: "#185FA5", letterSpacing: "-0.5px", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <img src={logo} alt="Remind Zen" style={{ height: 30 }} />
+        </div>
+
+        {!isMobile && (
+          <nav style={{ display: "flex", gap: 2, flex: 1, flexWrap: "nowrap", overflow: "hidden" }}>
+            {nav.map(n => (
+              <button key={n} onClick={() => setPage(n)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 12, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                {n}
+              </button>
+            ))}
+          </nav>
+        )}
+
+        {isMobile && <div style={{ flex: 1 }} />}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {!isMobile && (
+            <>
+              <button onClick={() => setPage("Feedback")} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Feedback</button>
+              <button onClick={() => setPage("History")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }} title="History">
+                <span style={{ fontSize: 16 }}>🔔</span>
+              </button>
+              <div style={{ fontSize: 11, color: "#bbb", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || user?.email}</div>
+            </>
+          )}
+          {isMobile && (
+            <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, padding: 4, color: "#555" }}>
+              {menuOpen ? "✕" : "☰"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isMobile && menuOpen && (
+        <div style={{ background: "#fff", borderTop: "1px solid #f0f0f0", padding: "8px 0 16px" }}>
+          {nav.map(n => (
+            <button key={n} onClick={() => { setPage(n); setMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 20px", border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#444", fontWeight: page === n ? 600 : 400, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>
+              {n}
+            </button>
+          ))}
+          <div style={{ borderTop: "1px solid #f0f0f0", margin: "8px 0", padding: "8px 20px 0" }}>
+            <button onClick={() => { setPage("Feedback"); setMenuOpen(false); }} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 14, padding: 0, fontFamily: "inherit" }}>Send feedback</button>
+          </div>
+          <div style={{ fontSize: 12, color: "#bbb", padding: "4px 20px" }}>{business?.name || user?.email}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main App ──
 
 export default function App() {
@@ -1825,29 +1899,9 @@ export default function App() {
     <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", minHeight: "100vh", background: "#f7f8fa" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 
-      <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "0 32px" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 60, gap: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src={logo} alt="Remind Zen" style={{ height: 36 }} />
-          </div>
-          <nav style={{ display: "flex", gap: 2, flex: 1 }}>
-            {(user?.id === ADMIN_UID ? ADMIN_NAV : NAV).map(n => (
-              <button key={n} onClick={() => setPage(n)} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                {n}
-              </button>
-            ))}
-          </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={() => setPage("Feedback")} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Send feedback</button>
-            <button onClick={() => setPage("History")} style={{ background: "none", border: "none", cursor: "pointer", position: "relative", padding: 4 }} title="View send history">
-              <span style={{ fontSize: 18 }}>🔔</span>
-            </button>
-            <div style={{ fontSize: 12, color: "#bbb" }}>{business?.name || user.email}</div>
-          </div>
-        </div>
-      </div>
+      <AppHeader page={page} setPage={setPage} user={user} business={business} />
 
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 32px" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "#1a1a1a" }}>{pageTitles[page]?.[0]}</h1>
         <p style={{ margin: "0 0 28px", color: "#aaa", fontSize: 14 }}>{pageTitles[page]?.[1]}</p>
 
