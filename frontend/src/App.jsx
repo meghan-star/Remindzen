@@ -1200,11 +1200,20 @@ function AccountDeletionSection({ user, showToast }) {
     }
     setDeleting(true);
     try {
+      // Cancel Stripe subscription first
+      await fetch(`${API}/account/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId: user.id }),
+      });
+
+      // Then wipe all data from Supabase
       await supabase.from("send_history").delete().eq("business_id", user.id);
       await supabase.from("schedules").delete().eq("business_id", user.id);
       await supabase.from("customers").delete().eq("business_id", user.id);
       await supabase.from("tag_library").delete().eq("business_id", user.id);
       await supabase.from("feedback").delete().eq("business_id", user.id);
+      await supabase.from("invite_codes").delete().eq("business_id", user.id).throwOnError();
       await supabase.from("businesses").delete().eq("id", user.id);
       await supabase.auth.signOut();
       window.location.reload();
@@ -1217,7 +1226,7 @@ function AccountDeletionSection({ user, showToast }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #f7c1c1", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
       <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#A32D2D" }}>Delete account</h3>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Permanently delete your account and all associated data including customers, schedules, and send history. This cannot be undone.</p>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Permanently delete your account and all associated data including customers, schedules, and send history. Your subscription will be cancelled automatically. This cannot be undone.</p>
       {step === "idle" && (
         <button onClick={() => setStep("confirm")} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>Delete my account</button>
       )}
@@ -1868,7 +1877,7 @@ function ContactPage() {
       <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 600 }}>Common questions</h3>
         {[
-          ["Why didn't my SMS send?", "Make sure the phone number is in +1XXXXXXXXXX format. If you're on a Twilio free trial, you can only send to verified numbers. Toll-free numbers also require verification in the Twilio console."],
+          ["Why didn't my SMS send?", "Make sure the phone number is in +1XXXXXXXXXX format. Also check that the customer has not opted out — opted-out customers are automatically skipped. If the issue persists, contact us and we'll look into it."],
           ["Why isn't my scheduled reminder firing?", "Check that the schedule is set to Active in the Schedules tab, and that your timezone is set correctly in Settings. Schedules fire based on your selected timezone."],
           ["How do I import my customers?", "Go to the Customers tab and click 'Import CSV'. Your CSV should have columns named: name, email, phone, notes, preferred_channel."],
           ["How do I cancel my account?", "Go to Settings → Delete account. This permanently removes all your data. If you need help, email us first."],

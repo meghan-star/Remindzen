@@ -455,6 +455,24 @@ app.post("/billing/webhook", express.raw({ type: "application/json" }), async (r
   res.json({ received: true });
 });
 
+
+// Delete account — cancels Stripe subscription then wipes all data
+app.post("/account/delete", async (req, res) => {
+  const { businessId } = req.body;
+  if (!businessId) return res.status(400).json({ error: "Missing business ID" });
+  try {
+    // Cancel Stripe subscription first
+    const { data: biz } = await supabase.from("businesses").select("stripe_subscription_id, stripe_customer_id").eq("id", businessId).single();
+    if (biz?.stripe_subscription_id) {
+      try {
+        await stripe.subscriptions.cancel(biz.stripe_subscription_id);
+        console.log(`[Account] Cancelled Stripe subscription ${biz.stripe_subscription_id}`);
+      } catch (e) { console.error("[Account] Stripe cancellation error:", e.message); }
+    }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Admin Routes ──
 const ADMIN_UID = "2bd0487e-a317-4cbd-9871-70d87aacaf47";
 
