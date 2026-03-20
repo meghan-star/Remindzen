@@ -144,7 +144,7 @@ function TagSuggestions({ tags, onAdd }) {
 
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ email: "", password: "", name: "" });
+  const [form, setForm] = useState({ email: "", password: "", name: "", inviteCode: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetSent, setResetSent] = useState(false);
@@ -161,10 +161,24 @@ function AuthScreen({ onAuth }) {
         if (!form.name.trim()) { setError("Business name is required"); setLoading(false); return; }
         if (form.password.length < 8) { setError("Password must be at least 8 characters"); setLoading(false); return; }
         if (!/[A-Z]/.test(form.password) && !/[0-9]/.test(form.password)) { setError("Password must contain a number or uppercase letter"); setLoading(false); return; }
+
+        // Check invite code if provided
+        let trialDays = 14;
+        let lockedPlan = null;
+        if (form.inviteCode?.trim()) {
+          const { data: code } = await supabase.from("invite_codes").select("*").eq("code", form.inviteCode.trim().toUpperCase()).eq("active", true).single();
+          if (!code) { setError("Invalid invite code. Leave blank to sign up without one."); setLoading(false); return; }
+          if (code.max_uses && code.uses_count >= code.max_uses) { setError("This invite code has reached its limit."); setLoading(false); return; }
+          trialDays = code.trial_days || 14;
+          lockedPlan = code.locked_plan || null;
+          await supabase.from("invite_codes").update({ uses_count: (code.uses_count || 0) + 1 }).eq("id", code.id);
+        }
+
         const { data, error } = await supabase.auth.signUp({ email: form.email, password: form.password });
         if (error) throw error;
         if (data.user) {
-          await supabase.from("businesses").insert({ id: data.user.id, name: form.name, email: form.email });
+          const trialEnd = new Date(Date.now() + trialDays * 86400000).toISOString();
+          await supabase.from("businesses").insert({ id: data.user.id, name: form.name, email: form.email, trial_ends_at: trialEnd, plan: lockedPlan || "trial" });
           onAuth(data.user);
         }
       } else {
@@ -199,7 +213,10 @@ function AuthScreen({ onAuth }) {
         ) : (
           <>
             {mode === "signup" && (
-              <input style={inputStyle} placeholder="Business name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+              <>
+                <input style={inputStyle} placeholder="Business name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                <input style={{ ...inputStyle, textTransform: "uppercase" }} placeholder="Invite code (optional)" value={form.inviteCode} onChange={e => setForm({ ...form, inviteCode: e.target.value.toUpperCase() })} />
+              </>
             )}
             <input style={inputStyle} placeholder="Email address" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
             {mode !== "reset" && (
@@ -273,6 +290,18 @@ function CustomersPage({ user, showToast }) {
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
+
+    // Check customer limit for new customers
+    if (!editingCustomer) {
+      const planLimits = { trial: 10, starter: 75, growth: 300, pro: 999999 };
+      const { data: biz } = await supabase.from("businesses").select("plan, trial_ends_at").eq("id", user.id).single();
+      const plan = biz?.plan || "trial";
+      const limit = planLimits[plan] || 10;
+      if (customers.length >= limit) {
+        showToast(`Customer limit reached (${limit} on ${plan} plan). Upgrade to add more.`, "error");
+        return;
+      }
+    }
 
     // Duplicate detection
     if (form.email || form.phone) {
@@ -1219,12 +1248,14 @@ function FeedbackPage({ user, business, showToast }) {
     if (!form.subject.trim() || !form.message.trim()) return;
     setSubmitting(true);
     try {
+      const { data: biz } = await supabase.from("businesses").select("plan").eq("id", user.id).single();
+      const isPro = biz?.plan === "pro";
       await supabase.from("feedback").insert({
         business_id: user.id,
         business_name: business?.name || "",
         email: user.email,
-        type: form.type,
-        subject: form.subject,
+        type: isPro ? `pro_priority_${form.type}` : form.type,
+        subject: isPro ? `[PRO] ${form.subject}` : form.subject,
         message: form.message,
       });
       setSubmitted(true);
@@ -1284,7 +1315,7 @@ function AdminPage() {
       fetch(`${API}/admin/feedback`, { headers: adminHeaders }).then(r => r.json()),
     ]).then(([b, f]) => {
       setBusinesses(b.businesses || []);
-      setFeedback(f.feedback || []);
+      const sorted = (f.feedback || []).sort((a, b) => { const aP = a.type?.startsWith('pro_priority') ? 0 : 1; const bP = b.type?.startsWith('pro_priority') ? 0 : 1; return aP - bP || new Date(b.created_at) - new Date(a.created_at); }); setFeedback(sorted);
       setLoading(false);
     });
   }, []);
@@ -1340,7 +1371,8 @@ function AdminPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                 <div>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{f.subject}</span>
-                  <span style={{ marginLeft: 10, fontSize: 11, background: f.type === "bug" ? "#FCEBEB" : f.type === "feature" ? "#EEEDFE" : "#F1EFE8", color: f.type === "bug" ? "#A32D2D" : f.type === "feature" ? "#3C3489" : "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{f.type}</span>
+                  {f.type?.startsWith("pro_priority") && <span style={{ marginLeft: 8, fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>⭐ PRO</span>}
+                  <span style={{ marginLeft: 8, fontSize: 11, background: f.type?.includes("bug") ? "#FCEBEB" : f.type?.includes("feature") ? "#EEEDFE" : "#F1EFE8", color: f.type?.includes("bug") ? "#A32D2D" : f.type?.includes("feature") ? "#3C3489" : "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{f.type?.replace("pro_priority_", "")}</span>
                   {!f.read && <span style={{ marginLeft: 8, fontSize: 11, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>New</span>}
                 </div>
                 <div style={{ fontSize: 12, color: "#aaa" }}>{new Date(f.created_at).toLocaleDateString()}</div>
@@ -1486,6 +1518,17 @@ function SchedulesPage({ user, showToast }) {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.body.trim()) return;
+
+    // Check schedule limit for plan
+    const planLimits = { trial: 1, starter: 2, growth: 999, pro: 999 };
+    const { data: biz } = await supabase.from("businesses").select("plan").eq("id", user.id).single();
+    const plan = biz?.plan || "trial";
+    const limit = planLimits[plan] || 1;
+    if (schedules.length >= limit) {
+      showToast(`Schedule limit reached (${limit} on ${plan} plan). Upgrade to create more.`, "error");
+      return;
+    }
+
     const { error } = await supabase.from("schedules").insert({
       business_id: user.id,
       name: form.name,

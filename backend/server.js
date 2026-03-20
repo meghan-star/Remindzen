@@ -206,7 +206,32 @@ app.post("/send", async (req, res) => {
   if (!customers?.length) return res.status(400).json({ success: false, error: "No customers provided" });
   if (!body) return res.status(400).json({ success: false, error: "Message body is required" });
 
-  // Rate limit check
+  // Plan & rate limit checks
+  if (businessId && supabase) {
+    const biz = await getBusinessPlan(businessId);
+    const plan = PLANS[biz?.plan];
+    const trialActive = biz?.trial_ends_at && new Date(biz.trial_ends_at) > new Date();
+
+    // Check suspension
+    if (biz?.suspended) {
+      return res.status(403).json({ success: false, error: "Your account has been suspended. Please contact support at remindzenco@gmail.com." });
+    }
+
+    // Check trial/subscription status
+    if (!plan && !trialActive) {
+      return res.status(403).json({ success: false, error: "Your free trial has expired. Please subscribe to continue sending reminders.", trialExpired: true });
+    }
+
+    // Check monthly message limit (plan limit, not just daily)
+    if (plan) {
+      const used = biz?.messages_used_this_month || 0;
+      if (used >= plan.messageLimit) {
+        return res.status(429).json({ success: false, error: `Monthly message limit of ${plan.messageLimit} reached for your ${plan.name} plan. Additional messages will be billed as overages ($0.01/email, $0.05/SMS). Upgrade for a higher limit.`, monthlyLimitReached: true });
+      }
+    }
+  }
+
+  // Daily rate limit check
   if (businessId) {
     const { allowed, count, limit, remaining } = checkRateLimit(businessId);
     if (!allowed) {
@@ -328,6 +353,7 @@ app.post("/billing/checkout", async (req, res) => {
         trial_period_days: 14,
         metadata: { businessId, planKey },
       },
+      allow_promotion_codes: true,
       success_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}?cancelled=true`,
       metadata: { businessId, planKey },
