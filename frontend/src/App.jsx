@@ -2232,6 +2232,11 @@ export default function App() {
     // Only show onboarding for genuinely new accounts
     const seen = localStorage.getItem("onboarding_complete");
     if (!seen && data?.onboarded === false) setShowOnboarding(true);
+    // Fetch billing status for usage meter
+    fetch(`${API}/billing/status`, { headers: { "x-business-id": uid } })
+      .then(r => r.json())
+      .then(data => setBillingStatus(data))
+      .catch(() => {});
   };
 
   const completeOnboarding = async () => {
