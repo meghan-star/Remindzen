@@ -84,9 +84,9 @@ const btnStyle = (primary) => ({
 
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 640);
+    const handler = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
@@ -1945,7 +1945,7 @@ function AppHeader({ page, setPage, user, business }) {
         </div>
 
         {!isMobile && (
-          <nav style={{ display: "flex", gap: 2, flex: 1, flexWrap: "nowrap", overflow: "hidden" }}>
+          <nav style={{ display: "flex", gap: 2, flex: 1, flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
             {nav.map(n => (
               <button key={n} onClick={() => setPage(n)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 12, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                 {n}
