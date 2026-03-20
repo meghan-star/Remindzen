@@ -82,6 +82,53 @@ const btnStyle = (primary) => ({
   fontWeight: 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
 });
 
+function PasswordStrength({ password }) {
+  const len = password.length;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNum = /[0-9]/.test(password);
+  const strength = len >= 12 && (hasUpper || hasNum) ? "strong" : len >= 8 && (hasUpper || hasNum) ? "good" : "weak";
+  const colors = { weak: "#A32D2D", good: "#BA7517", strong: "#3B6D11" };
+  const widths = { weak: "33%", good: "66%", strong: "100%" };
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ height: 4, background: "#f0f0f0", borderRadius: 99, marginBottom: 4 }}>
+        <div style={{ height: 4, width: widths[strength], background: colors[strength], borderRadius: 99, transition: "width 0.3s" }} />
+      </div>
+      <div style={{ fontSize: 12, color: colors[strength] }}>
+        {strength === "weak" ? "Weak — add numbers or uppercase letters" : strength === "good" ? "Good password" : "Strong password"}
+      </div>
+    </div>
+  );
+}
+
+function SmsCounter({ body }) {
+  const chars = body.length;
+  const segments = Math.ceil(chars / 160);
+  const over = chars > 160;
+  const remaining = 160 - (chars % 160 || 160);
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+      <span style={{ fontSize: 12, color: over ? "#A32D2D" : "#aaa" }}>
+        {chars} chars · {over ? `${segments} SMS segments (costs ${segments}x)` : "1 SMS segment"}
+      </span>
+      <span style={{ fontSize: 12, color: "#aaa" }}>{remaining} until next segment</span>
+    </div>
+  );
+}
+
+function TagSuggestions({ tags, onAdd }) {
+  const lib = JSON.parse(localStorage.getItem("tagLibrary") || "[]");
+  const suggestions = lib.filter(t => !tags.includes(t));
+  if (suggestions.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+      {suggestions.map(t => (
+        <button key={t} onClick={() => onAdd(t)} style={{ padding: "3px 10px", borderRadius: 99, border: "1px dashed #CECBF6", background: "transparent", color: "#534AB7", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ {t}</button>
+      ))}
+    </div>
+  );
+}
+
 // ── Auth Screen ──
 
 function AuthScreen({ onAuth }) {
@@ -147,22 +194,9 @@ function AuthScreen({ onAuth }) {
             {mode !== "reset" && (
               <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
                 onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-              {mode === "signup" && form.password.length > 0 && (() => {
-                const len = form.password.length;
-                const hasUpper = /[A-Z]/.test(form.password);
-                const hasNum = /[0-9]/.test(form.password);
-                const strength = len >= 12 && (hasUpper || hasNum) ? "strong" : len >= 8 && (hasUpper || hasNum) ? "good" : "weak";
-                const colors = { weak: "#A32D2D", good: "#BA7517", strong: "#3B6D11" };
-                const widths = { weak: "33%", good: "66%", strong: "100%" };
-                return (
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ height: 4, background: "#f0f0f0", borderRadius: 99, marginBottom: 4 }}>
-                      <div style={{ height: 4, width: widths[strength], background: colors[strength], borderRadius: 99, transition: "width 0.3s" }} />
-                    </div>
-                    <div style={{ fontSize: 12, color: colors[strength] }}>{strength === "weak" ? "Weak — add numbers or uppercase letters" : strength === "good" ? "Good password" : "Strong password"}</div>
-                  </div>
-                );
-              })()}
+              {mode === "signup" && form.password.length > 0 && (
+                <PasswordStrength password={form.password} />
+              )}
             )}
             {error && <div style={{ color: "#A32D2D", fontSize: 13, marginBottom: 12, background: "#FCEBEB", padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
             <button onClick={handleSubmit} disabled={loading} style={{ ...btnStyle(true), width: "100%", marginBottom: 16 }}>
@@ -414,11 +448,7 @@ function CustomersPage({ user, showToast }) {
               </span>
             ))}
           </div>
-          {(() => { const lib = JSON.parse(localStorage.getItem("tagLibrary") || "[]"); const suggestions = lib.filter(t => !(form.tags||[]).includes(t)); return suggestions.length > 0 ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-              {suggestions.map(t => <button key={t} onClick={() => setForm({ ...form, tags: [...(form.tags||[]), t] })} style={{ padding: "3px 10px", borderRadius: 99, border: "1px dashed #CECBF6", background: "transparent", color: "#534AB7", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ {t}</button>)}
-            </div>
-          ) : null; })()}
+          <TagSuggestions tags={form.tags || []} onAdd={t => setForm({ ...form, tags: [...(form.tags||[]), t] })} />
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input style={{ ...inputStyle, marginBottom: 0, flex: 1 }} placeholder="Add a custom tag or pick above" value={tagInput} onChange={e => setTagInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); e.preventDefault(); } }} />
@@ -630,19 +660,9 @@ function SendPage({ user, business, showToast }) {
           <input style={inputStyle} placeholder="Email subject (for email sends)" value={msg.subject} onChange={e => setMsg({ ...msg, subject: e.target.value })} />
           <div style={{ position: "relative", marginBottom: 12 }}>
             <textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical", marginBottom: 0 }} placeholder="Message body... Use {name}, {date}, {time}, {amount} as variables" value={msg.body} onChange={e => setMsg({ ...msg, body: e.target.value })} />
-            {msg.body.length > 0 && (() => {
-              const chars = msg.body.length;
-              const segments = Math.ceil(chars / 160);
-              const over = chars > 160;
-              return (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                  <span style={{ fontSize: 12, color: over ? "#A32D2D" : "#aaa" }}>
-                    {chars} chars {over ? `· ${segments} SMS segments (costs ${segments}x)` : "· 1 SMS segment"}
-                  </span>
-                  <span style={{ fontSize: 12, color: "#aaa" }}>{160 - (chars % 160 || 160)} chars until next segment</span>
-                </div>
-              );
-            })()}
+            {msg.body.length > 0 && (
+              <SmsCounter body={msg.body} />
+            )}
           </div>
 
           <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Fill in variables (optional)</p>
