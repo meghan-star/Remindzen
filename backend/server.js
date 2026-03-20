@@ -6,7 +6,7 @@ const twilio = require("twilio");
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
-app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type"] }));
+app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type", "x-admin-uid"] }));
 app.options("*", cors());
 app.use(express.json());
 
