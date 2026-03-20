@@ -2126,9 +2126,7 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
   return (
     <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: isMobile ? "0 16px" : "0 32px", position: "relative" }}>
       <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 56, gap: isMobile ? 8 : 24 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "#185FA5", letterSpacing: "-0.5px", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-          <img src={logo} alt="Remind Zen" style={{ height: 30 }} />
-        </div>
+        <img src={logo} alt="Remind Zen" style={{ height: 32, flexShrink: 0, cursor: "pointer" }} onClick={() => setPage("Customers")} />
 
         {!isMobile && (
           <nav style={{ display: "flex", gap: 2, flex: 1, flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
@@ -2157,7 +2155,7 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
                   </div>
                 </button>
               )}
-              <div style={{ fontSize: 11, color: "#bbb", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || user?.email}</div>
+              <div style={{ fontSize: 11, color: "#bbb", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || ""}</div>
             </>
           )}
           {billingStatus && isMobile && (
