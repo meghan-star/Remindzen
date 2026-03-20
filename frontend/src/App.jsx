@@ -588,6 +588,7 @@ function SendPage({ user, business, showToast }) {
         vars,
         businessName: business?.name || "Remind Zen",
         businessId: user.id,
+        businessId: user.id,
       };
       const res = await fetch(`${API}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -1625,6 +1626,172 @@ function SchedulesPage({ user, showToast }) {
 }
 
 
+
+// ── Billing Page ──
+
+const PLAN_DETAILS = {
+  trial: { name: "Free Trial", color: "#3B6D11", bg: "#EAF3DE", limit: 50 },
+  starter: { name: "Starter", color: "#185FA5", bg: "#E6F1FB", limit: 150 },
+  growth: { name: "Growth", color: "#534AB7", bg: "#EEEDFE", limit: 500 },
+  pro: { name: "Pro", color: "#854F0B", bg: "#FAEEDA", limit: 2000 },
+  cancelled: { name: "Cancelled", color: "#A32D2D", bg: "#FCEBEB", limit: 0 },
+};
+
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+function BillingPage({ user, business }) {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [annual, setAnnual] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/billing/status`, { headers: { "x-business-id": user.id } })
+      .then(r => r.json())
+      .then(data => { setStatus(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleSubscribe = async (planKey) => {
+    setRedirecting(true);
+    const priceMap = {
+      starter: annual ? import.meta.env.VITE_PRICE_STARTER_ANNUAL : import.meta.env.VITE_PRICE_STARTER_MONTHLY,
+      growth: annual ? import.meta.env.VITE_PRICE_GROWTH_ANNUAL : import.meta.env.VITE_PRICE_GROWTH_MONTHLY,
+      pro: annual ? import.meta.env.VITE_PRICE_PRO_ANNUAL : import.meta.env.VITE_PRICE_PRO_MONTHLY,
+    };
+    try {
+      const res = await fetch(`${API}/billing/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId: user.id, priceId: priceMap[planKey], email: user.email, annual }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch { setRedirecting(false); }
+  };
+
+  const handleManageBilling = async () => {
+    setRedirecting(true);
+    try {
+      const res = await fetch(`${API}/billing/portal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId: user.id }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch { setRedirecting(false); }
+  };
+
+  const plans = [
+    { key: "starter", name: "Starter", monthlyPrice: 14, annualPrice: 140, features: ["75 customers", "150 messages/month", "Email + SMS", "2 schedules", "Templates", "14-day free trial"] },
+    { key: "growth", name: "Growth", monthlyPrice: 29, annualPrice: 290, features: ["300 customers", "500 messages/month", "Email + SMS", "Unlimited schedules", "Tags & groups", "CSV import/export", "Analytics", "14-day free trial"], popular: true },
+    { key: "pro", name: "Pro", monthlyPrice: 59, annualPrice: 590, features: ["Unlimited customers", "2,000 messages/month", "Everything in Growth", "Priority support", "Calendar integration*", "Two-way SMS*", "14-day free trial"] },
+  ];
+
+  if (loading) return <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>Loading billing info...</div>;
+
+  const planInfo = PLAN_DETAILS[status?.plan || "trial"];
+  const usagePct = status ? Math.min(100, Math.round((status.messagesUsed / status.messageLimit) * 100)) : 0;
+  const isSubscribed = status?.plan && !["trial", "cancelled"].includes(status.plan);
+
+  return (
+    <div style={{ maxWidth: 860 }}>
+      {/* Trial banner */}
+      {status?.trialActive && (
+        <div style={{ background: "#EAF3DE", border: "1px solid #C0DD97", borderRadius: 12, padding: "14px 20px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <span style={{ fontWeight: 600, color: "#3B6D11" }}>Free trial active</span>
+            <span style={{ color: "#3B6D11", fontSize: 14, marginLeft: 8 }}>{status.trialDaysLeft} day{status.trialDaysLeft !== 1 ? "s" : ""} remaining</span>
+          </div>
+          <span style={{ fontSize: 13, color: "#3B6D11" }}>Subscribe before your trial ends to keep access</span>
+        </div>
+      )}
+
+      {status?.plan === "cancelled" && (
+        <div style={{ background: "#FCEBEB", border: "1px solid #f7c1c1", borderRadius: 12, padding: "14px 20px", marginBottom: 24 }}>
+          <span style={{ fontWeight: 600, color: "#A32D2D" }}>Your subscription has been cancelled.</span>
+          <span style={{ color: "#A32D2D", fontSize: 14, marginLeft: 8 }}>Subscribe below to restore access.</span>
+        </div>
+      )}
+
+      {/* Current plan + usage */}
+      {isSubscribed && (
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "20px 24px", marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 13, color: "#aaa", marginBottom: 4 }}>Current plan</div>
+              <span style={{ background: planInfo.bg, color: planInfo.color, fontWeight: 600, fontSize: 15, padding: "4px 14px", borderRadius: 99 }}>{planInfo.name}</span>
+            </div>
+            <button onClick={handleManageBilling} disabled={redirecting} style={btnStyle(false)}>
+              {redirecting ? "Opening..." : "Manage billing →"}
+            </button>
+          </div>
+          <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+            <span style={{ color: "#888" }}>Messages this month</span>
+            <span style={{ fontWeight: 500, color: usagePct > 90 ? "#A32D2D" : "#1a1a1a" }}>{status.messagesUsed} / {status.messageLimit}</span>
+          </div>
+          <div style={{ height: 8, background: "#f0f0f0", borderRadius: 99 }}>
+            <div style={{ height: 8, width: `${usagePct}%`, background: usagePct > 90 ? "#E24B4A" : usagePct > 70 ? "#BA7517" : "#185FA5", borderRadius: 99, transition: "width 0.5s" }} />
+          </div>
+          {usagePct > 90 && <div style={{ fontSize: 12, color: "#A32D2D", marginTop: 6 }}>Approaching limit — additional messages will be billed as overages ($0.01/email, $0.05/SMS)</div>}
+        </div>
+      )}
+
+      {/* Annual toggle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 24 }}>
+        <span style={{ fontSize: 14, color: !annual ? "#1a1a1a" : "#aaa", fontWeight: !annual ? 500 : 400 }}>Monthly</span>
+        <div onClick={() => setAnnual(!annual)} style={{ width: 44, height: 24, borderRadius: 99, background: annual ? "#185FA5" : "#ddd", cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
+          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: annual ? 23 : 3, transition: "left 0.2s" }} />
+        </div>
+        <span style={{ fontSize: 14, color: annual ? "#1a1a1a" : "#aaa", fontWeight: annual ? 500 : 400 }}>
+          Annual <span style={{ background: "#EAF3DE", color: "#3B6D11", fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 99, marginLeft: 4 }}>2 months free</span>
+        </span>
+      </div>
+
+      {/* Plan cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 28 }}>
+        {plans.map(plan => {
+          const isCurrent = status?.plan === plan.key;
+          const price = annual ? plan.annualPrice : plan.monthlyPrice;
+          const period = annual ? "/year" : "/mo";
+          return (
+            <div key={plan.key} style={{ background: "#fff", border: plan.popular ? "2px solid #185FA5" : "1px solid #f0f0f0", borderRadius: 14, padding: "22px 20px", display: "flex", flexDirection: "column" }}>
+              {plan.popular && <div style={{ fontSize: 11, fontWeight: 600, color: "#185FA5", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Most popular</div>}
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{plan.name}</div>
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ fontSize: 30, fontWeight: 700, color: "#1a1a1a" }}>${price}</span>
+                <span style={{ fontSize: 13, color: "#aaa" }}>{period}</span>
+                {annual && <div style={{ fontSize: 11, color: "#3B6D11", marginTop: 2 }}>${plan.monthlyPrice}/mo billed annually</div>}
+              </div>
+              <div style={{ flex: 1, marginBottom: 20 }}>
+                {plan.features.map(f => (
+                  <div key={f} style={{ display: "flex", gap: 8, fontSize: 13, color: "#555", padding: "4px 0" }}>
+                    <span style={{ color: "#185FA5", flexShrink: 0 }}>✓</span>{f}
+                  </div>
+                ))}
+              </div>
+              {isCurrent ? (
+                <button style={{ ...btnStyle(false), width: "100%", opacity: 0.6, cursor: "default" }}>Current plan</button>
+              ) : (
+                <button onClick={() => handleSubscribe(plan.key)} disabled={redirecting} style={{ ...btnStyle(plan.popular), width: "100%", background: plan.popular ? "#185FA5" : "#fff", color: plan.popular ? "#fff" : "#185FA5", border: plan.popular ? "none" : "1px solid #185FA5" }}>
+                  {redirecting ? "Redirecting..." : isSubscribed ? "Switch to this plan" : "Start free trial"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", lineHeight: 1.8 }}>
+        All plans include a 14-day free trial · No credit card required to start<br />
+        Overages: $0.01/email · $0.05/SMS above plan limit · Cancel anytime<br />
+        * Feature coming soon
+      </div>
+    </div>
+  );
+}
+
 // ── Contact Page ──
 
 function ContactPage() {
@@ -1831,6 +1998,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [page, setPage] = useState("Customers");
   const [toast, setToast] = useState(null);
+  const [billingStatus, setBillingStatus] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -1881,6 +2049,8 @@ export default function App() {
     Templates: ["Templates", "Save time with reusable message templates"],
 
     History: ["Send History", "Track every message sent, delivered, and failed"],
+    Billing: ["Billing", "Manage your Remind Zen subscription"],
+
     Schedules: ["Scheduled Reminders", "Set up automatic recurring reminders for your customers"],
 
     Settings: ["Settings", "Manage your Remind Zen account"],
@@ -1902,6 +2072,18 @@ export default function App() {
       <AppHeader page={page} setPage={setPage} user={user} business={business} />
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
+        {billingStatus?.trialActive && billingStatus?.trialDaysLeft <= 3 && page !== "Billing" && (
+          <div style={{ background: "#FAEEDA", border: "1px solid #FAC775", borderRadius: 10, padding: "10px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 13, color: "#633806", fontWeight: 500 }}>⚠️ Your free trial ends in {billingStatus.trialDaysLeft} day{billingStatus.trialDaysLeft !== 1 ? "s" : ""}</span>
+            <button onClick={() => setPage("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#854F0B" }}>Subscribe now →</button>
+          </div>
+        )}
+        {billingStatus?.plan === "cancelled" && page !== "Billing" && (
+          <div style={{ background: "#FCEBEB", border: "1px solid #f7c1c1", borderRadius: 10, padding: "10px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 13, color: "#A32D2D", fontWeight: 500 }}>Your subscription has ended — sending is disabled</span>
+            <button onClick={() => setPage("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#A32D2D" }}>Resubscribe →</button>
+          </div>
+        )}
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "#1a1a1a" }}>{pageTitles[page]?.[0]}</h1>
         <p style={{ margin: "0 0 28px", color: "#aaa", fontSize: 14 }}>{pageTitles[page]?.[1]}</p>
 
@@ -1909,6 +2091,7 @@ export default function App() {
         {page === "Send Reminder" && <SendPage user={user} business={business} showToast={showToast} />}
         {page === "Templates" && <TemplatesPage showToast={showToast} />}
         {page === "History" && <HistoryPage user={user} />}
+        {page === "Billing" && <BillingPage user={user} business={business} />}
         {page === "Schedules" && <SchedulesPage user={user} showToast={showToast} />}
         {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} />}
         {page === "Legal" && <LegalPage />}

@@ -4,11 +4,13 @@ const cors = require("cors");
 const sgMail = require("@sendgrid/mail");
 const twilio = require("twilio");
 const { createClient } = require("@supabase/supabase-js");
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type", "x-admin-uid"] }));
 app.options("*", cors());
-app.use(express.json());
+app.use((req, res, next) => { if (req.path === "/billing/webhook") next(); else express.json()(req, res, next); });
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -105,6 +107,71 @@ async function sendSMS(customer, body, vars, businessName) {
 }
 
 
+
+// ── Plan configuration ──
+const PLANS = {
+  starter: {
+    name: "Starter",
+    monthly: process.env.PRICE_STARTER_MONTHLY,
+    annual: process.env.PRICE_STARTER_ANNUAL,
+    emailOverage: process.env.PRICE_STARTER_EMAIL,
+    smsOverage: process.env.PRICE_STARTER_SMS,
+    messageLimit: 150,
+    customerLimit: 75,
+    scheduleLimit: 2,
+  },
+  growth: {
+    name: "Growth",
+    monthly: process.env.PRICE_GROWTH_MONTHLY,
+    annual: process.env.PRICE_GROWTH_ANNUAL,
+    emailOverage: process.env.PRICE_GROWTH_EMAIL,
+    smsOverage: process.env.PRICE_GROWTH_SMS,
+    messageLimit: 500,
+    customerLimit: 300,
+    scheduleLimit: 999,
+  },
+  pro: {
+    name: "Pro",
+    monthly: process.env.PRICE_PRO_MONTHLY,
+    annual: process.env.PRICE_PRO_ANNUAL,
+    emailOverage: process.env.PRICE_PRO_EMAIL,
+    smsOverage: process.env.PRICE_PRO_SMS,
+    messageLimit: 2000,
+    customerLimit: 999999,
+    scheduleLimit: 999,
+  },
+};
+
+function getPlanByPriceId(priceId) {
+  for (const [key, plan] of Object.entries(PLANS)) {
+    if (plan.monthly === priceId || plan.annual === priceId) return key;
+  }
+  return "growth"; // default
+}
+
+async function getBusinessPlan(businessId) {
+  const { data } = await supabase.from("businesses").select("plan, trial_ends_at, stripe_customer_id, messages_used_this_month, suspended").eq("id", businessId).single();
+  return data;
+}
+
+async function reportUsageToStripe(businessId, emailCount, smsCount) {
+  try {
+    const { data: biz } = await supabase.from("businesses").select("stripe_subscription_id, plan").eq("id", businessId).single();
+    if (!biz?.stripe_subscription_id) return;
+    const plan = PLANS[biz.plan];
+    if (!plan) return;
+    const sub = await stripe.subscriptions.retrieve(biz.stripe_subscription_id, { expand: ["items"] });
+    for (const item of sub.items.data) {
+      if (item.price.id === plan.emailOverage && emailCount > 0) {
+        await stripe.subscriptionItems.createUsageRecord(item.id, { quantity: emailCount, timestamp: Math.floor(Date.now() / 1000) });
+      }
+      if (item.price.id === plan.smsOverage && smsCount > 0) {
+        await stripe.subscriptionItems.createUsageRecord(item.id, { quantity: smsCount, timestamp: Math.floor(Date.now() / 1000) });
+      }
+    }
+  } catch (e) { console.error("Usage report error:", e.message); }
+}
+
 // ── Error message helpers ──
 
 function parseSendGridError(err) {
@@ -169,7 +236,27 @@ app.post("/send", async (req, res) => {
 
   if (businessId) incrementRateLimit(businessId, customers.length);
 
-  res.json({ success: results.every(r => r.success), sent: results.filter(r => r.success).length, failed: results.filter(r => !r.success).length, results });
+  const sentCount = results.filter(r => r.success).length;
+
+  // Update message usage count and report overages to Stripe
+  if (businessId && supabase && sentCount > 0) {
+    try {
+      const biz = await getBusinessPlan(businessId);
+      const plan = PLANS[biz?.plan];
+      const newUsed = (biz?.messages_used_this_month || 0) + sentCount;
+      await supabase.from("businesses").update({ messages_used_this_month: newUsed }).eq("id", businessId);
+
+      // Report overage if over plan limit
+      if (plan && newUsed > plan.messageLimit) {
+        const overageCount = Math.min(sentCount, newUsed - plan.messageLimit);
+        const emailResults = results.filter(r => r.success && r.results?.some(x => x.channel === "email"));
+        const smsResults = results.filter(r => r.success && r.results?.some(x => x.channel === "sms"));
+        if (overageCount > 0) await reportUsageToStripe(businessId, emailResults.length, smsResults.length);
+      }
+    } catch (e) { console.error("Usage tracking error:", e.message); }
+  }
+
+  res.json({ success: results.every(r => r.success), sent: sentCount, failed: results.filter(r => !r.success).length, results });
 });
 
 // Feedback endpoint — emails admin
@@ -190,6 +277,157 @@ app.post("/feedback", async (req, res) => {
   }
 });
 
+
+
+// ── Billing Routes ──
+
+// Get current plan status
+app.get("/billing/status", async (req, res) => {
+  const businessId = req.headers["x-business-id"];
+  if (!businessId) return res.status(400).json({ error: "Missing business ID" });
+  try {
+    const biz = await getBusinessPlan(businessId);
+    const plan = PLANS[biz?.plan || "trial"];
+    const trialActive = biz?.trial_ends_at && new Date(biz.trial_ends_at) > new Date();
+    const trialDaysLeft = biz?.trial_ends_at ? Math.max(0, Math.ceil((new Date(biz.trial_ends_at) - new Date()) / 86400000)) : 0;
+    res.json({
+      plan: biz?.plan || "trial",
+      planName: plan?.name || "Trial",
+      trialActive,
+      trialDaysLeft,
+      messagesUsed: biz?.messages_used_this_month || 0,
+      messageLimit: plan?.messageLimit || 50,
+      customerLimit: plan?.customerLimit || 10,
+      scheduleLimit: plan?.scheduleLimit || 1,
+      stripeCustomerId: biz?.stripe_customer_id,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Create checkout session
+app.post("/billing/checkout", async (req, res) => {
+  const { businessId, priceId, email, annual } = req.body;
+  if (!businessId || !priceId) return res.status(400).json({ error: "Missing required fields" });
+  try {
+    const planKey = getPlanByPriceId(priceId);
+    const plan = PLANS[planKey];
+    const lineItems = [{ price: priceId, quantity: 1 }];
+    if (annual) {
+      if (plan.emailOverage) lineItems.push({ price: plan.emailOverage });
+      if (plan.smsOverage) lineItems.push({ price: plan.smsOverage });
+    } else {
+      if (plan.emailOverage) lineItems.push({ price: plan.emailOverage });
+      if (plan.smsOverage) lineItems.push({ price: plan.smsOverage });
+    }
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      customer_email: email,
+      line_items: lineItems,
+      subscription_data: {
+        trial_period_days: 14,
+        metadata: { businessId, planKey },
+      },
+      success_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}/billing/cancel`,
+      metadata: { businessId, planKey },
+    });
+    res.json({ url: session.url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Open customer portal
+app.post("/billing/portal", async (req, res) => {
+  const { businessId } = req.body;
+  if (!businessId) return res.status(400).json({ error: "Missing business ID" });
+  try {
+    const { data: biz } = await supabase.from("businesses").select("stripe_customer_id").eq("id", businessId).single();
+    if (!biz?.stripe_customer_id) return res.status(400).json({ error: "No billing account found" });
+    const session = await stripe.billingPortal.sessions.create({
+      customer: biz.stripe_customer_id,
+      return_url: process.env.FRONTEND_URL || "https://remindzen.vercel.app",
+    });
+    res.json({ url: session.url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Stripe webhook
+app.post("/billing/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (e) {
+    console.error("Webhook signature failed:", e.message);
+    return res.status(400).send(`Webhook Error: ${e.message}`);
+  }
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        const businessId = session.metadata?.businessId;
+        const planKey = session.metadata?.planKey || "growth";
+        if (businessId) {
+          await supabase.from("businesses").update({
+            plan: planKey,
+            stripe_customer_id: session.customer,
+            stripe_subscription_id: session.subscription,
+            trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+          }).eq("id", businessId);
+          console.log(`[Billing] ${businessId} subscribed to ${planKey}`);
+        }
+        break;
+      }
+      case "customer.subscription.updated": {
+        const sub = event.data.object;
+        const planKey = getPlanByPriceId(sub.items?.data?.[0]?.price?.id) || "growth";
+        const { data: biz } = await supabase.from("businesses").select("id").eq("stripe_customer_id", sub.customer).single();
+        if (biz) {
+          await supabase.from("businesses").update({
+            plan: planKey,
+            stripe_subscription_id: sub.id,
+          }).eq("id", biz.id);
+          console.log(`[Billing] ${biz.id} plan updated to ${planKey}`);
+        }
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object;
+        const { data: biz } = await supabase.from("businesses").select("id").eq("stripe_customer_id", sub.customer).single();
+        if (biz) {
+          await supabase.from("businesses").update({ plan: "cancelled", stripe_subscription_id: null }).eq("id", biz.id);
+          console.log(`[Billing] ${biz.id} subscription cancelled`);
+        }
+        break;
+      }
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        const { data: biz } = await supabase.from("businesses").select("id, email, name").eq("stripe_customer_id", invoice.customer).single();
+        if (biz?.email) {
+          await sgMail.send({
+            to: biz.email,
+            from: process.env.FROM_EMAIL,
+            subject: "Action required: Payment failed for Remind Zen",
+            text: `Hi ${biz.name || "there"},\n\nYour payment for Remind Zen failed. Please update your payment method to keep your account active.\n\nManage billing: ${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}\n\n— Remind Zen`,
+          });
+        }
+        break;
+      }
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object;
+        const { data: biz } = await supabase.from("businesses").select("id").eq("stripe_customer_id", invoice.customer).single();
+        if (biz) {
+          await supabase.from("businesses").update({ messages_used_this_month: 0, messages_reset_at: new Date().toISOString() }).eq("id", biz.id);
+          console.log(`[Billing] ${biz.id} payment succeeded — message count reset`);
+        }
+        break;
+      }
+    }
+  } catch (e) { console.error("[Webhook] Handler error:", e.message); }
+
+  res.json({ received: true });
+});
 
 // ── Admin Routes ──
 const ADMIN_UID = "2bd0487e-a317-4cbd-9871-70d87aacaf47";
