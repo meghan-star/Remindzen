@@ -13,8 +13,8 @@ const TEMPLATES = [
   { id: 4, name: "Payment Due", channel: "sms", body: "Hi {name}, a friendly reminder that your payment of {amount} is due on {date}. Please contact us with any questions." },
 ];
 
-const NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Settings", "Feedback", "Legal"];
-const ADMIN_NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Settings", "Feedback", "Legal", "Admin"];
+const NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact"];
+const ADMIN_NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact", "Admin"];
 
 // ── Shared UI ──
 
@@ -1959,8 +1959,7 @@ function AppHeader({ page, setPage, user, business }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {!isMobile && (
             <>
-              <button onClick={() => setPage("Feedback")} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Feedback</button>
-              <button onClick={() => setPage("History")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }} title="History">
+              <button onClick={() => setPage("History")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }} title="View send history">
                 <span style={{ fontSize: 16 }}>🔔</span>
               </button>
               <div style={{ fontSize: 11, color: "#bbb", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || user?.email}</div>
@@ -2045,26 +2044,16 @@ export default function App() {
 
   const pageTitles = {
     Customers: ["Customers", "Add, organize, and manage your customers"],
-
     "Send Reminder": ["Send Reminder", "Send personalized email and SMS reminders in seconds"],
-
     Templates: ["Templates", "Save time with reusable message templates"],
-
+    Schedules: ["Scheduled Reminders", "Set up automatic recurring reminders for your customers"],
     History: ["Send History", "Track every message sent, delivered, and failed"],
     Billing: ["Billing", "Manage your Remind Zen subscription"],
-
-    Schedules: ["Scheduled Reminders", "Set up automatic recurring reminders for your customers"],
-
     Settings: ["Settings", "Manage your Remind Zen account"],
-
     Legal: ["Legal", "Terms of service and privacy policy"],
     Contact: ["Contact & Support", "Get help or reach the Remind Zen team"],
-
     Feedback: ["Send Feedback", "Report a bug or suggest a feature"],
     Admin: ["Admin Panel", "Manage all Remind Zen accounts"],
-    Admin: ["Admin Panel", "Manage all Remind Zen accounts"],
-    Feedback: ["Feedback", "Submit a bug report or feature request"],
-
   };
 
   return (
