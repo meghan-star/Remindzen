@@ -282,19 +282,6 @@ function CustomersPage({ user, showToast }) {
     showToast(`Import complete: ${added} added, ${updated} updated${skipped > 0 ? ", " + skipped + " skipped" : ""}`, "success");
   };
 
-  const handleExportCSV = () => {
-    const headers = ["name","email","phone","notes","preferred_channel","tags","unsubscribed","sms_consent","sms_consent_at"];
-    const rows = customers.map(c => headers.map(h => {
-      const val = h === "tags" ? (c.tags || []).join("|") : (c[h] ?? "");
-      return `"${String(val).replace(/"/g, '\"')}"`; 
-    }).join(","));
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "customers.csv"; a.click();
-    URL.revokeObjectURL(url);
-    showToast(`Exported ${customers.length} customers`, "success");
-  };
 
   const handleExportCSV = () => {
     const headers = ["name", "email", "phone", "notes", "preferred_channel", "tags", "unsubscribed", "sms_consent"];
