@@ -243,6 +243,7 @@ function CustomersPage({ user, showToast }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [bulkSelected, setBulkSelected] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
