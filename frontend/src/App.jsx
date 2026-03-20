@@ -179,6 +179,7 @@ function AuthScreen({ onAuth }) {
         if (data.user) {
           const trialEnd = new Date(Date.now() + trialDays * 86400000).toISOString();
           await supabase.from("businesses").insert({ id: data.user.id, name: form.name, email: form.email, trial_ends_at: trialEnd, plan: lockedPlan || "trial" });
+          if (form.inviteCode?.trim()) localStorage.setItem(`invite_code_${data.user.id}`, form.inviteCode.trim().toUpperCase());
           onAuth(data.user);
         }
       } else {
@@ -1313,10 +1314,18 @@ function FeedbackPage({ user, business, showToast }) {
 function AdminPage() {
   const [businesses, setBusinesses] = useState([]);
   const [feedback, setFeedback] = useState([]);
+  const [inviteCodes, setInviteCodes] = useState([]);
   const [tab, setTab] = useState("businesses");
   const [loading, setLoading] = useState(true);
+  const [newCode, setNewCode] = useState({ code: "", trial_days: 30, locked_plan: "", max_uses: "", note: "" });
+  const [saving, setSaving] = useState(false);
 
   const adminHeaders = { "Content-Type": "application/json", "x-admin-uid": "2bd0487e-a317-4cbd-9871-70d87aacaf47" };
+
+  const loadInviteCodes = async () => {
+    const { data } = await supabase.from("invite_codes").select("*").order("created_at", { ascending: false });
+    setInviteCodes(data || []);
+  };
 
   useEffect(() => {
     Promise.all([
@@ -1324,10 +1333,40 @@ function AdminPage() {
       fetch(`${API}/admin/feedback`, { headers: adminHeaders }).then(r => r.json()),
     ]).then(([b, f]) => {
       setBusinesses(b.businesses || []);
-      const sorted = (f.feedback || []).sort((a, b) => { const aP = a.type?.startsWith('pro_priority') ? 0 : 1; const bP = b.type?.startsWith('pro_priority') ? 0 : 1; return aP - bP || new Date(b.created_at) - new Date(a.created_at); }); setFeedback(sorted);
+      const sorted = (f.feedback || []).sort((a, b) => { const aP = a.type?.startsWith("pro_priority") ? 0 : 1; const bP = b.type?.startsWith("pro_priority") ? 0 : 1; return aP - bP || new Date(b.created_at) - new Date(a.created_at); }); setFeedback(sorted);
       setLoading(false);
     });
+    loadInviteCodes();
   }, []);
+
+  const handleCreateCode = async () => {
+    if (!newCode.code.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from("invite_codes").insert({
+      code: newCode.code.trim().toUpperCase(),
+      trial_days: parseInt(newCode.trial_days) || 30,
+      locked_plan: newCode.locked_plan || null,
+      max_uses: newCode.max_uses ? parseInt(newCode.max_uses) : null,
+      note: newCode.note || null,
+      active: true,
+    });
+    if (!error) {
+      setNewCode({ code: "", trial_days: 30, locked_plan: "", max_uses: "", note: "" });
+      loadInviteCodes();
+    }
+    setSaving(false);
+  };
+
+  const toggleCodeActive = async (code) => {
+    await supabase.from("invite_codes").update({ active: !code.active }).eq("id", code.id);
+    loadInviteCodes();
+  };
+
+  const deleteCode = async (id) => {
+    if (!window.confirm("Delete this invite code?")) return;
+    await supabase.from("invite_codes").delete().eq("id", id);
+    loadInviteCodes();
+  };
 
   const toggleSuspend = async (b) => {
     await fetch(`${API}/admin/businesses/${b.id}/suspend`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ suspended: !b.suspended }) });
@@ -1344,7 +1383,7 @@ function AdminPage() {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        {[["businesses", `Businesses (${businesses.length})`], ["feedback", `Feedback${unreadCount > 0 ? ` (${unreadCount} new)` : ""}`]].map(([key, label]) => (
+        {[["businesses", `Businesses (${businesses.length})`], ["feedback", `Feedback${unreadCount > 0 ? ` (${unreadCount} new)` : ""}`], ["invites", `Invite Codes (${inviteCodes.length})`]].map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: tab === key ? "#185FA5" : "#f0f0f0", color: tab === key ? "#fff" : "#555", fontWeight: 500, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
             {label}
           </button>
@@ -1369,6 +1408,71 @@ function AdminPage() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && tab === "invites" && (
+        <div>
+          <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600 }}>Create new invite code</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Code *</label>
+                <input style={{ ...inputStyle, marginBottom: 0, textTransform: "uppercase" }} placeholder="e.g. EARLY2024" value={newCode.code} onChange={e => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Trial days</label>
+                <input style={{ ...inputStyle, marginBottom: 0 }} type="number" min="1" max="365" value={newCode.trial_days} onChange={e => setNewCode({ ...newCode, trial_days: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Lock to plan</label>
+                <select style={{ ...inputStyle, marginBottom: 0, cursor: "pointer" }} value={newCode.locked_plan} onChange={e => setNewCode({ ...newCode, locked_plan: e.target.value })}>
+                  <option value="">No lock (free choice)</option>
+                  <option value="starter">Starter</option>
+                  <option value="growth">Growth</option>
+                  <option value="pro">Pro</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Max uses</label>
+                <input style={{ ...inputStyle, marginBottom: 0 }} type="number" min="1" placeholder="Unlimited" value={newCode.max_uses} onChange={e => setNewCode({ ...newCode, max_uses: e.target.value })} />
+              </div>
+              <div style={{ gridColumn: "span 2" }}>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Note (internal only)</label>
+                <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="e.g. Early adopter batch 1" value={newCode.note} onChange={e => setNewCode({ ...newCode, note: e.target.value })} />
+              </div>
+            </div>
+            <button onClick={handleCreateCode} disabled={saving || !newCode.code.trim()} style={{ ...btnStyle(true), opacity: !newCode.code.trim() ? 0.4 : 1 }}>
+              {saving ? "Creating..." : "Create invite code"}
+            </button>
+          </div>
+
+          {inviteCodes.length === 0 ? (
+            <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No invite codes yet.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {inviteCodes.map(c => (
+                <div key={c.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, opacity: c.active ? 1 : 0.6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, fontFamily: "monospace", color: "#185FA5" }}>{c.code}</span>
+                      <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: c.active ? "#EAF3DE" : "#F1EFE8", color: c.active ? "#3B6D11" : "#5F5E5A" }}>{c.active ? "Active" : "Inactive"}</span>
+                      {c.locked_plan && <span style={{ fontSize: 11, background: "#EEEDFE", color: "#3C3489", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{c.locked_plan}</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#aaa", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                      <span>🗓 {c.trial_days} day trial</span>
+                      <span>👥 {c.uses_count || 0}{c.max_uses ? `/${c.max_uses}` : ""} uses</span>
+                      {c.note && <span>📝 {c.note}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button onClick={() => toggleCodeActive(c)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 12px" }}>{c.active ? "Deactivate" : "Activate"}</button>
+                    <button onClick={() => deleteCode(c.id)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 12px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1680,6 +1784,32 @@ function SchedulesPage({ user, showToast }) {
 
 
 
+
+// ── Invite Code Benefit Display ──
+
+function InviteCodeBenefit({ userId, trialDaysLeft }) {
+  const [codeUsed, setCodeUsed] = useState(null);
+
+  useEffect(() => {
+    // Check if this business signed up with an invite code
+    // We store this in localStorage at signup time
+    const code = localStorage.getItem(`invite_code_${userId}`);
+    if (code) setCodeUsed(code);
+  }, [userId]);
+
+  if (!codeUsed) return null;
+
+  return (
+    <div style={{ background: "#EAF3DE", border: "1px solid #C0DD97", borderRadius: 12, padding: "14px 20px", marginBottom: 24, display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ fontSize: 24 }}>🎁</div>
+      <div>
+        <div style={{ fontWeight: 600, color: "#27500A", fontSize: 14 }}>Invite code applied — {trialDaysLeft} days free trial</div>
+        <div style={{ fontSize: 13, color: "#3B6D11", marginTop: 2 }}>Code <strong>{codeUsed}</strong> gave you an extended free trial. Your plan activates automatically when the trial ends.</div>
+      </div>
+    </div>
+  );
+}
+
 // ── Billing Page ──
 
 const PLAN_DETAILS = {
@@ -1766,6 +1896,10 @@ function BillingPage({ user, business }) {
           <span style={{ fontWeight: 600, color: "#A32D2D" }}>Your subscription has been cancelled.</span>
           <span style={{ color: "#A32D2D", fontSize: 14, marginLeft: 8 }}>Subscribe below to restore access.</span>
         </div>
+      )}
+
+      {status?.trialActive && status?.trialDaysLeft > 3 && (
+        <InviteCodeBenefit userId={user.id} trialDaysLeft={status.trialDaysLeft} />
       )}
 
       {/* Current plan + usage */}
