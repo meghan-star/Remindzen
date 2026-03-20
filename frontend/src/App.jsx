@@ -101,6 +101,8 @@ function AuthScreen({ onAuth }) {
         onAuth(data.user);
       } else if (mode === "signup") {
         if (!form.name.trim()) { setError("Business name is required"); setLoading(false); return; }
+        if (form.password.length < 8) { setError("Password must be at least 8 characters"); setLoading(false); return; }
+        if (!/[A-Z]/.test(form.password) && !/[0-9]/.test(form.password)) { setError("Password must contain a number or uppercase letter"); setLoading(false); return; }
         const { data, error } = await supabase.auth.signUp({ email: form.email, password: form.password });
         if (error) throw error;
         if (data.user) {
@@ -145,6 +147,22 @@ function AuthScreen({ onAuth }) {
             {mode !== "reset" && (
               <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
                 onKeyDown={e => e.key === "Enter" && handleSubmit()} />
+              {mode === "signup" && form.password.length > 0 && (() => {
+                const len = form.password.length;
+                const hasUpper = /[A-Z]/.test(form.password);
+                const hasNum = /[0-9]/.test(form.password);
+                const strength = len >= 12 && (hasUpper || hasNum) ? "strong" : len >= 8 && (hasUpper || hasNum) ? "good" : "weak";
+                const colors = { weak: "#A32D2D", good: "#BA7517", strong: "#3B6D11" };
+                const widths = { weak: "33%", good: "66%", strong: "100%" };
+                return (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ height: 4, background: "#f0f0f0", borderRadius: 99, marginBottom: 4 }}>
+                      <div style={{ height: 4, width: widths[strength], background: colors[strength], borderRadius: 99, transition: "width 0.3s" }} />
+                    </div>
+                    <div style={{ fontSize: 12, color: colors[strength] }}>{strength === "weak" ? "Weak — add numbers or uppercase letters" : strength === "good" ? "Good password" : "Strong password"}</div>
+                  </div>
+                );
+              })()}
             )}
             {error && <div style={{ color: "#A32D2D", fontSize: 13, marginBottom: 12, background: "#FCEBEB", padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
             <button onClick={handleSubmit} disabled={loading} style={{ ...btnStyle(true), width: "100%", marginBottom: 16 }}>
@@ -457,6 +475,7 @@ function SendPage({ user, business, showToast }) {
   const [usePreferred, setUsePreferred] = useState(true);
   const [overrideChannel, setOverrideChannel] = useState("email");
   const [tagFilter, setTagFilter] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     supabase.from("customers").select("*").eq("business_id", user.id).eq("unsubscribed", false).order("name")
@@ -512,7 +531,8 @@ function SendPage({ user, business, showToast }) {
         showToast(`Sent to ${data.sent} customer${data.sent !== 1 ? "s" : ""}!`, "success");
         setStep(1); setSelected([]); setMsg({ subject: "", body: "" }); setTemplateId(null);
       } else {
-        showToast("Send failed: " + (data.error || "Unknown error"), "error");
+        const errMsg = data.results?.find(r => !r.success)?.error || data.error || "Unknown error";
+        showToast("Send failed: " + errMsg, "error");
       }
     } catch {
       showToast("Could not connect to server", "error");
@@ -608,7 +628,22 @@ function SendPage({ user, business, showToast }) {
           </div>
 
           <input style={inputStyle} placeholder="Email subject (for email sends)" value={msg.subject} onChange={e => setMsg({ ...msg, subject: e.target.value })} />
-          <textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} placeholder="Message body... Use {name}, {date}, {time}, {amount} as variables" value={msg.body} onChange={e => setMsg({ ...msg, body: e.target.value })} />
+          <div style={{ position: "relative", marginBottom: 12 }}>
+            <textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical", marginBottom: 0 }} placeholder="Message body... Use {name}, {date}, {time}, {amount} as variables" value={msg.body} onChange={e => setMsg({ ...msg, body: e.target.value })} />
+            {msg.body.length > 0 && (() => {
+              const chars = msg.body.length;
+              const segments = Math.ceil(chars / 160);
+              const over = chars > 160;
+              return (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: over ? "#A32D2D" : "#aaa" }}>
+                    {chars} chars {over ? `· ${segments} SMS segments (costs ${segments}x)` : "· 1 SMS segment"}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#aaa" }}>{160 - (chars % 160 || 160)} chars until next segment</span>
+                </div>
+              );
+            })()}
+          </div>
 
           <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Fill in variables (optional)</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
@@ -656,9 +691,26 @@ function SendPage({ user, business, showToast }) {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => setStep(2)} style={btnStyle(false)}>← Back</button>
-            <button onClick={handleSend} disabled={sending} style={{ ...btnStyle(true), minWidth: 160 }}>
+            <button onClick={() => setShowConfirm(true)} disabled={sending} style={{ ...btnStyle(true), minWidth: 160 }}>
               {sending ? "Sending..." : `Send to ${selected.length} Customer${selected.length > 1 ? "s" : ""}`}
             </button>
+            {showConfirm && (
+              <Modal title="Confirm send" onClose={() => setShowConfirm(false)}>
+                <p style={{ fontSize: 14, color: "#444", marginBottom: 8, lineHeight: 1.7 }}>
+                  You're about to send <strong>{selected.length} message{selected.length > 1 ? "s" : ""}</strong> to {selected.length} customer{selected.length > 1 ? "s" : ""}.
+                </p>
+                <p style={{ fontSize: 13, color: "#888", marginBottom: 20, lineHeight: 1.7 }}>
+                  {usePreferred ? "Each customer will receive via their preferred channel." : `All messages will be sent via ${overrideChannel === "both" ? "Email + SMS" : overrideChannel.toUpperCase()}.`}
+                  {" "}This will count toward your monthly message limit.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setShowConfirm(false)} style={btnStyle(false)}>Cancel</button>
+                  <button onClick={() => { setShowConfirm(false); handleSend(); }} style={btnStyle(true)}>
+                    Yes, send {selected.length} message{selected.length > 1 ? "s" : ""}
+                  </button>
+                </div>
+              </Modal>
+            )}
           </div>
         </div>
       )}
@@ -789,8 +841,8 @@ function HistoryPage({ user }) {
                 <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>{h.subject || h.body?.slice(0, 60) + "..."}</div>
               </div>
               <Badge type={h.channel} label={h.channel === "both" ? "Email + SMS" : h.channel?.toUpperCase()} />
-              <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: h.status === "sent" ? "#EAF3DE" : "#FCEBEB", color: h.status === "sent" ? "#3B6D11" : "#A32D2D" }}>
-                {h.status}
+              <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: h.status === "sent" ? "#EAF3DE" : "#FCEBEB", color: h.status === "sent" ? "#3B6D11" : "#A32D2D" }} title={h.error || ""}>
+                {h.status === "failed" && h.error ? "failed — hover for details" : h.status}
               </span>
               <div style={{ fontSize: 12, color: "#bbb", whiteSpace: "nowrap" }}>
                 {new Date(h.sent_at).toLocaleDateString()} {new Date(h.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

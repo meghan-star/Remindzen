@@ -75,25 +75,59 @@ function buildEmailHtml(body, businessName) {
 async function sendEmail(customer, subject, body, vars, businessName) {
   if (!customer.email) return { ok: false, error: "No email address" };
   const resolvedBody = resolveVars(body, customer, vars);
-  await sgMail.send({
-    to: customer.email,
-    from: process.env.FROM_EMAIL,
-    subject: resolveVars(subject, customer, vars),
-    text: resolvedBody + `\n\n— Sent by Remind Zen on behalf of ${businessName}. Reply STOP to unsubscribe.`,
-    html: buildEmailHtml(resolvedBody, businessName),
-  });
-  return { ok: true };
+  try {
+    await sgMail.send({
+      to: customer.email,
+      from: process.env.FROM_EMAIL,
+      subject: resolveVars(subject, customer, vars),
+      text: resolvedBody + `\n\n— Sent by Remind Zen on behalf of ${businessName}. Reply STOP to unsubscribe.`,
+      html: buildEmailHtml(resolvedBody, businessName),
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: parseSendGridError(err) };
+  }
 }
 
 async function sendSMS(customer, body, vars, businessName) {
   if (!customer.phone) return { ok: false, error: "No phone number" };
   const resolvedBody = resolveVars(body, customer, vars);
-  await twilioClient.messages.create({
-    body: `${resolvedBody}\n\nReply STOP to unsubscribe. Sent by Remind Zen for ${businessName}.`,
-    from: process.env.TWILIO_FROM_NUMBER,
-    to: customer.phone,
-  });
-  return { ok: true };
+  try {
+    await twilioClient.messages.create({
+      body: `${resolvedBody}\n\nReply STOP to unsubscribe. Sent by Remind Zen for ${businessName}.`,
+      from: process.env.TWILIO_FROM_NUMBER,
+      to: customer.phone,
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: parseTwilioError(err) };
+  }
+}
+
+
+// ── Error message helpers ──
+
+function parseSendGridError(err) {
+  const code = err?.response?.body?.errors?.[0]?.message || err.message || "";
+  if (code.includes("does not match a verified")) return "Your sender email is not verified in SendGrid. Go to SendGrid → Sender Authentication and verify your email.";
+  if (code.includes("API key")) return "Invalid SendGrid API key. Check your SENDGRID_API_KEY environment variable.";
+  if (code.includes("Forbidden")) return "SendGrid API key does not have permission to send emails.";
+  if (code.includes("invalid")) return "Invalid email address format.";
+  return `SendGrid error: ${code}`;
+}
+
+function parseTwilioError(err) {
+  const code = err?.code || 0;
+  const msg = err?.message || "";
+  if (code === 21211 || msg.includes("not a valid phone number")) return "Invalid phone number format. Numbers must be in +1XXXXXXXXXX format.";
+  if (code === 21612) return "This phone number cannot receive SMS messages.";
+  if (code === 21408) return "SMS not supported in this region.";
+  if (code === 21610) return "This number has opted out of receiving messages (replied STOP).";
+  if (code === 21614) return "Phone number is not SMS-capable.";
+  if (code === 30032 || msg.includes("Toll-Free")) return "Your Twilio toll-free number needs to be verified before sending. Go to Twilio Console → Phone Numbers → Toll-Free Verification.";
+  if (code === 21219 || msg.includes("trial")) return "Twilio trial accounts can only send to verified numbers. Upgrade your Twilio account or verify the recipient number.";
+  if (msg.includes("authenticate")) return "Invalid Twilio credentials. Check your TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.";
+  return `Twilio error ${code}: ${msg}`;
 }
 
 // ── Routes ──
@@ -124,6 +158,7 @@ app.post("/send", async (req, res) => {
       if (channel === "email" || channel === "both") r.results.push({ channel: "email", ...await sendEmail(customer, subject, body, vars, businessName) });
       if (channel === "sms" || channel === "both") r.results.push({ channel: "sms", ...await sendSMS(customer, body, vars, businessName) });
       r.success = r.results.every(x => x.ok);
+      if (!r.success) r.error = r.results.filter(x => !x.ok).map(x => x.error).join(", ");
     } catch (err) {
       r.success = false; r.error = err.message;
       console.error(`Error sending to ${customer.name}:`, err.message);
