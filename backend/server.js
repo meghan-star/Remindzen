@@ -155,6 +155,57 @@ app.post("/feedback", async (req, res) => {
   }
 });
 
+
+// ── Admin Routes ──
+const ADMIN_UID = "2bd0487e-a317-4cbd-9871-70d87aacaf47";
+
+function requireAdmin(req, res, next) {
+  const uid = req.headers["x-admin-uid"];
+  if (uid !== ADMIN_UID) return res.status(403).json({ error: "Forbidden" });
+  next();
+}
+
+app.get("/admin/businesses", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json({ businesses: data || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/admin/feedback", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json({ feedback: data || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/admin/businesses/:id/suspend", requireAdmin, async (req, res) => {
+  try {
+    const { suspended } = req.body;
+    const { error } = await supabase.from("businesses").update({ suspended }).eq("id", req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/admin/feedback/:id/read", requireAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase.from("feedback").update({ read: true }).eq("id", req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Scheduler ──
 
 function shouldRunNow(schedule, now) {

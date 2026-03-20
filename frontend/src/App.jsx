@@ -1110,24 +1110,26 @@ function AdminPage() {
   const [tab, setTab] = useState("businesses");
   const [loading, setLoading] = useState(true);
 
+  const adminHeaders = { "Content-Type": "application/json", "x-admin-uid": "2bd0487e-a317-4cbd-9871-70d87aacaf47" };
+
   useEffect(() => {
     Promise.all([
-      supabase.from("businesses").select("*").order("created_at", { ascending: false }),
-      supabase.from("feedback").select("*").order("created_at", { ascending: false }),
-    ]).then(([{ data: b }, { data: f }]) => {
-      setBusinesses(b || []);
-      setFeedback(f || []);
+      fetch(`${API}/admin/businesses`, { headers: adminHeaders }).then(r => r.json()),
+      fetch(`${API}/admin/feedback`, { headers: adminHeaders }).then(r => r.json()),
+    ]).then(([b, f]) => {
+      setBusinesses(b.businesses || []);
+      setFeedback(f.feedback || []);
       setLoading(false);
     });
   }, []);
 
   const toggleSuspend = async (b) => {
-    await supabase.from("businesses").update({ suspended: !b.suspended }).eq("id", b.id);
+    await fetch(`${API}/admin/businesses/${b.id}/suspend`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ suspended: !b.suspended }) });
     setBusinesses(businesses.map(x => x.id === b.id ? { ...x, suspended: !x.suspended } : x));
   };
 
   const markRead = async (f) => {
-    await supabase.from("feedback").update({ read: true }).eq("id", f.id);
+    await fetch(`${API}/admin/feedback/${f.id}/read`, { method: "POST", headers: adminHeaders });
     setFeedback(feedback.map(x => x.id === f.id ? { ...x, read: true } : x));
   };
 
