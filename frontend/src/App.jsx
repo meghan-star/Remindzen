@@ -300,6 +300,15 @@ function CustomersPage({ user, showToast }) {
     if (!error) { showToast(`${name} removed`, "success"); loadCustomers(); }
   };
 
+  const handleBulkDelete = async () => {
+    if (!bulkSelected.length) return;
+    if (!window.confirm(`Delete ${bulkSelected.length} customer${bulkSelected.length > 1 ? "s" : ""}? This cannot be undone.`)) return;
+    await supabase.from("customers").delete().in("id", bulkSelected);
+    showToast(`${bulkSelected.length} customer${bulkSelected.length > 1 ? "s" : ""} deleted`, "success");
+    setBulkSelected([]);
+    loadCustomers();
+  };
+
   const handleCSVImport = async (file) => {
     if (!file) return;
     const text = await file.text();
@@ -384,6 +393,14 @@ function CustomersPage({ user, showToast }) {
         </div>
       </div>
 
+      {bulkSelected.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: "#f0f6ff", borderRadius: 10, marginBottom: 12, border: "1px solid #b5d4f4" }}>
+          <span style={{ fontSize: 14, color: "#185FA5", fontWeight: 500 }}>{bulkSelected.length} selected</span>
+          <button onClick={handleBulkDelete} style={{ ...btnStyle(false), fontSize: 13, padding: "5px 14px", color: "#A32D2D", borderColor: "#f7c1c1" }}>Delete selected</button>
+          <button onClick={() => setBulkSelected([])} style={{ ...btnStyle(false), fontSize: 13, padding: "5px 14px" }}>Clear selection</button>
+        </div>
+      )}
+
       {allTags.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
           <button onClick={() => setActiveTag(null)} style={{ padding: "4px 12px", borderRadius: 99, border: "none", background: !activeTag ? "#185FA5" : "#f0f0f0", color: !activeTag ? "#fff" : "#555", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
@@ -407,7 +424,8 @@ function CustomersPage({ user, showToast }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map(c => (
-            <div key={c.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, opacity: c.unsubscribed ? 0.6 : 1 }}>
+            <div key={c.id} style={{ background: bulkSelected.includes(c.id) ? "#f0f6ff" : "#fff", border: `1px solid ${bulkSelected.includes(c.id) ? "#b5d4f4" : "#f0f0f0"}`, borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, opacity: c.unsubscribed ? 0.6 : 1 }}>
+              <input type="checkbox" checked={bulkSelected.includes(c.id)} onChange={() => setBulkSelected(bulkSelected.includes(c.id) ? bulkSelected.filter(x => x !== c.id) : [...bulkSelected, c.id])} style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
               <Avatar name={c.name} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>{c.name}</div>
@@ -508,6 +526,7 @@ function SendPage({ user, business, showToast }) {
   const [overrideChannel, setOverrideChannel] = useState("email");
   const [tagFilter, setTagFilter] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
 
   useEffect(() => {
     supabase.from("customers").select("*").eq("business_id", user.id).eq("unsubscribed", false).order("name")
@@ -521,6 +540,19 @@ function SendPage({ user, business, showToast }) {
 
   const resolveBody = (body, name = "(customer name)") =>
     (body || "").replace(/{name}/g, name).replace(/{date}/g, vars.date || "{date}").replace(/{time}/g, vars.time || "{time}").replace(/{amount}/g, vars.amount || "{amount}");
+
+  const handleSendTest = async () => {
+    if (!msg.body.trim()) return;
+    setSendingTest(true);
+    try {
+      const testCustomer = { id: "test", name: user.email, email: user.email, phone: business?.phone || "", preferred_channel: "email", channel: "email" };
+      const res = await fetch(`${API}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customers: [testCustomer], subject: msg.subject, body: msg.body, vars, businessName: business?.name || "Remind Zen" }) });
+      const data = await res.json();
+      if (data.sent > 0) showToast(`Test sent to ${user.email}`, "success");
+      else showToast("Test failed: " + (data.results?.[0]?.error || "Unknown error"), "error");
+    } catch { showToast("Could not connect to server", "error"); }
+    finally { setSendingTest(false); }
+  };
 
   const handleSend = async () => {
     setSending(true);
@@ -622,6 +654,7 @@ function SendPage({ user, business, showToast }) {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name}</div>
                     <div style={{ fontSize: 12, color: "#888" }}>{c.email} {c.phone && `· ${c.phone}`}</div>
+                    {c.notes && <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, fontStyle: "italic" }}>{c.notes}</div>}
                   </div>
                   <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
                 </label>
@@ -674,9 +707,12 @@ function SendPage({ user, business, showToast }) {
             <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="{amount}" value={vars.amount} onChange={e => setVars({ ...vars, amount: e.target.value })} />
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <button onClick={() => setStep(1)} style={btnStyle(false)}>← Back</button>
             <button disabled={!canProceed2} onClick={() => setStep(3)} style={{ ...btnStyle(true), opacity: canProceed2 ? 1 : 0.4 }}>Preview →</button>
+            <button disabled={sendingTest || !canProceed2} onClick={handleSendTest} style={{ ...btnStyle(false), opacity: !canProceed2 ? 0.4 : 1, fontSize: 13 }}>
+              {sendingTest ? "Sending..." : "📧 Send test to myself"}
+            </button>
           </div>
         </div>
       )}
@@ -824,11 +860,24 @@ function TemplatesPage({ showToast }) {
 function HistoryPage({ user }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
 
   useEffect(() => {
-    supabase.from("send_history").select("*").eq("business_id", user.id).order("sent_at", { ascending: false }).limit(100)
+    supabase.from("send_history").select("*").eq("business_id", user.id).order("sent_at", { ascending: false }).limit(500)
       .then(({ data }) => { setHistory(data || []); setLoading(false); });
   }, []);
+
+  const filtered = history.filter(h => {
+    const matchesSearch = !search || h.customer_name?.toLowerCase().includes(search.toLowerCase()) || h.subject?.toLowerCase().includes(search.toLowerCase());
+    const now = new Date();
+    const sent = new Date(h.sent_at);
+    const matchesDate = dateFilter === "all" ||
+      (dateFilter === "today" && sent.toDateString() === now.toDateString()) ||
+      (dateFilter === "week" && (now - sent) < 7 * 86400000) ||
+      (dateFilter === "month" && sent.getMonth() === now.getMonth() && sent.getFullYear() === now.getFullYear());
+    return matchesSearch && matchesDate;
+  });
 
   const stats = {
     total: history.length,
@@ -847,6 +896,16 @@ function HistoryPage({ user }) {
         ))}
       </div>
 
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        <input placeholder="Search by customer or subject..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ ...inputStyle, flex: 1, minWidth: 200, marginBottom: 0 }} />
+        <div style={{ display: "flex", gap: 6 }}>
+          {[["all","All time"],["today","Today"],["week","This week"],["month","This month"]].map(([val, label]) => (
+            <button key={val} onClick={() => setDateFilter(val)} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: dateFilter === val ? "#185FA5" : "#f0f0f0", color: dateFilter === val ? "#fff" : "#555", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
+          ))}
+        </div>
+      </div>
+
       {loading ? (
         <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading history...</div>
       ) : history.length === 0 ? (
@@ -856,7 +915,7 @@ function HistoryPage({ user }) {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {history.map(h => (
+          {filtered.length === 0 ? <p style={{ color: "#aaa", textAlign: "center", padding: "20px 0" }}>No results match your search.</p> : filtered.map(h => (
             <div key={h.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 500, fontSize: 14, color: "#1a1a1a" }}>{h.customer_name}</div>
@@ -928,7 +987,7 @@ function DeleteAccountSection({ user }) {
 // ── Settings Page ──
 
 function SettingsPage({ user, business, setBusiness, showToast }) {
-  const [form, setForm] = useState({ name: business?.name || "", email: business?.email || "" });
+  const [form, setForm] = useState({ name: business?.name || "", email: business?.email || "", timezone: business?.timezone || "America/Los_Angeles", notify_schedule_email: business?.notify_schedule_email || false });
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwords, setPasswords] = useState({ newPass: "", confirm: "" });
@@ -936,7 +995,7 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
 
   const saveBusiness = async () => {
     setSaving(true);
-    const { error } = await supabase.from("businesses").upsert({ id: user.id, name: form.name, email: form.email });
+    const { error } = await supabase.from("businesses").upsert({ id: user.id, name: form.name, email: form.email, timezone: form.timezone, notify_schedule_email: form.notify_schedule_email });
     setSaving(false);
     if (!error) { setBusiness({ ...business, ...form }); showToast("Settings saved", "success"); }
     else showToast("Save failed", "error");
@@ -983,6 +1042,25 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
         <input style={inputStyle} placeholder="Your business name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
         <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Contact email</label>
         <input style={inputStyle} placeholder="Contact email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+        <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Timezone</label>
+        <select style={{ ...inputStyle, cursor: "pointer" }} value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })}>
+          <option value="America/Los_Angeles">US/Pacific — Los Angeles</option>
+          <option value="America/Denver">US/Mountain — Denver</option>
+          <option value="America/Chicago">US/Central — Chicago</option>
+          <option value="America/New_York">US/Eastern — New York</option>
+          <option value="America/Anchorage">US/Alaska — Anchorage</option>
+          <option value="Pacific/Honolulu">US/Hawaii — Honolulu</option>
+          <option value="Europe/London">Europe — London</option>
+          <option value="Europe/Paris">Europe — Paris / Berlin</option>
+          <option value="Australia/Sydney">Australia — Sydney</option>
+        </select>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16 }}>
+          <input type="checkbox" checked={form.notify_schedule_email} onChange={e => setForm({ ...form, notify_schedule_email: e.target.checked })} style={{ width: 16, height: 16 }} />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Email me when a schedule fires</div>
+            <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Get a summary email each time an automated reminder schedule runs</div>
+          </div>
+        </label>
         <button onClick={saveBusiness} disabled={saving} style={btnStyle(true)}>{saving ? "Saving..." : "Save changes"}</button>
       </div>
 
@@ -1534,6 +1612,58 @@ function SchedulesPage({ user, showToast }) {
   );
 }
 
+
+// ── Contact Page ──
+
+function ContactPage() {
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 600 }}>Get in touch</h3>
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: "#888", lineHeight: 1.7 }}>
+          Have a question, found a bug, or need help with your account? We're here to help.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✉️</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Email support</div>
+              <a href="mailto:remindzenco@gmail.com" style={{ fontSize: 13, color: "#185FA5" }}>remindzenco@gmail.com</a>
+              <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>We typically respond within 1 business day</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EEEDFE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>💬</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>In-app feedback</div>
+              <div style={{ fontSize: 13, color: "#888" }}>Use the "Send feedback" button at the top of any page to submit bug reports or feature requests directly.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 600 }}>Common questions</h3>
+        {[
+          ["Why didn't my SMS send?", "Make sure the phone number is in +1XXXXXXXXXX format. If you're on a Twilio free trial, you can only send to verified numbers. Toll-free numbers also require verification in the Twilio console."],
+          ["Why isn't my scheduled reminder firing?", "Check that the schedule is set to Active in the Schedules tab, and that your timezone is set correctly in Settings. Schedules fire based on your selected timezone."],
+          ["How do I import my customers?", "Go to the Customers tab and click 'Import CSV'. Your CSV should have columns named: name, email, phone, notes, preferred_channel."],
+          ["How do I cancel my account?", "Go to Settings → Delete account. This permanently removes all your data. If you need help, email us first."],
+        ].map(([q, a]) => (
+          <details key={q} style={{ marginBottom: 12, borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
+            <summary style={{ fontSize: 14, fontWeight: 500, cursor: "pointer", color: "#1a1a1a" }}>{q}</summary>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "#888", lineHeight: 1.7 }}>{a}</p>
+          </details>
+        ))}
+      </div>
+
+      <div style={{ background: "#f9f9f9", borderRadius: 12, padding: "20px 24px", fontSize: 13, color: "#aaa", lineHeight: 1.7 }}>
+        <strong style={{ color: "#888" }}>Remind Zen LLC</strong> · Ventura, CA · <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>
+      </div>
+    </div>
+  );
+}
+
 // ── Legal Page ──
 
 function LegalPage() {
@@ -1682,6 +1812,8 @@ export default function App() {
     Settings: ["Settings", "Manage your Remind Zen account"],
 
     Legal: ["Legal", "Terms of service and privacy policy"],
+    Contact: ["Contact & Support", "Get help or reach the Remind Zen team"],
+
     Feedback: ["Send Feedback", "Report a bug or suggest a feature"],
     Admin: ["Admin Panel", "Manage all Remind Zen accounts"],
     Admin: ["Admin Panel", "Manage all Remind Zen accounts"],
@@ -1707,6 +1839,9 @@ export default function App() {
           </nav>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={() => setPage("Feedback")} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Send feedback</button>
+            <button onClick={() => setPage("History")} style={{ background: "none", border: "none", cursor: "pointer", position: "relative", padding: 4 }} title="View send history">
+              <span style={{ fontSize: 18 }}>🔔</span>
+            </button>
             <div style={{ fontSize: 12, color: "#bbb" }}>{business?.name || user.email}</div>
           </div>
         </div>
@@ -1726,6 +1861,7 @@ export default function App() {
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
         {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
         {page === "Admin" && user?.id === ADMIN_UID && <AdminPage />}
+        {page === "Contact" && <ContactPage />}
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
       </div>
 

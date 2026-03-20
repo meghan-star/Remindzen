@@ -243,14 +243,16 @@ app.post("/admin/feedback/:id/read", requireAdmin, async (req, res) => {
 
 // ── Scheduler ──
 
-function shouldRunNow(schedule, now) {
+function shouldRunNow(schedule, now, timezone) {
+  const tz = timezone || "America/Los_Angeles";
+  const localNow = new Date(now.toLocaleString("en-US", { timeZone: tz }));
   const [h, m] = (schedule.send_time || "09:00").split(":").map(Number);
   const sendMinutes = h * 60 + m;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const nowMinutes = localNow.getHours() * 60 + localNow.getMinutes();
   if (Math.abs(nowMinutes - sendMinutes) > 1) return false;
   if (schedule.cadence === "daily") return true;
-  if (schedule.cadence === "weekly") return now.getDay() === parseInt(schedule.day_of_week || 1);
-  if (schedule.cadence === "monthly") return now.getDate() === parseInt(schedule.day_of_month || 1);
+  if (schedule.cadence === "weekly") return localNow.getDay() === parseInt(schedule.day_of_week || 1);
+  if (schedule.cadence === "monthly") return localNow.getDate() === parseInt(schedule.day_of_month || 1);
   if (schedule.cadence === "interval") {
     if (!schedule.last_run_at) return true;
     const daysSince = (now - new Date(schedule.last_run_at)) / 86400000;
@@ -267,8 +269,8 @@ async function runScheduler() {
     if (!schedules?.length) return;
 
     for (const schedule of schedules) {
-      if (!shouldRunNow(schedule, now)) continue;
-      const { data: business } = await supabase.from("businesses").select("name").eq("id", schedule.business_id).single();
+      if (!shouldRunNow(schedule, now, business?.timezone)) continue;
+      const { data: business } = await supabase.from("businesses").select("name, email, timezone, notify_schedule_email").eq("id", schedule.business_id).single();
 
       // Check rate limit for scheduled sends
       const { allowed, remaining } = checkRateLimit(schedule.business_id);
@@ -297,7 +299,19 @@ async function runScheduler() {
       incrementRateLimit(schedule.business_id, toSend.length);
       await supabase.from("send_history").insert(historyRows);
       await supabase.from("schedules").update({ last_run_at: now.toISOString() }).eq("id", schedule.id);
-      console.log(`[Scheduler] "${schedule.name}" done — ${historyRows.filter(r => r.status === "sent").length} sent`);
+      const sentCount = historyRows.filter(r => r.status === "sent").length;
+      console.log(`[Scheduler] "${schedule.name}" done — ${sentCount} sent`);
+
+      if (business?.notify_schedule_email && business?.email && sentCount > 0) {
+        try {
+          await sgMail.send({
+            to: business.email,
+            from: process.env.FROM_EMAIL,
+            subject: `Schedule "${schedule.name}" sent ${sentCount} reminder${sentCount !== 1 ? "s" : ""}`,
+            text: `Your scheduled reminder "${schedule.name}" just ran.\n\n${sentCount} message${sentCount !== 1 ? "s were" : " was"} sent.\n\nView results in your Send History tab.\n\n— Remind Zen`,
+          });
+        } catch (e) { console.error("[Scheduler] Notification email failed:", e.message); }
+      }
     }
   } catch (err) {
     console.error("[Scheduler] Error:", err.message);
