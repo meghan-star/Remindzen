@@ -2018,8 +2018,9 @@ export default function App() {
     const { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
     setBusiness(data || {});
     setAuthLoading(false);
+    // Only show onboarding for genuinely new accounts
     const seen = localStorage.getItem("onboarding_complete");
-    if (!seen) setShowOnboarding(true);
+    if (!seen && data?.onboarded === false) setShowOnboarding(true);
   };
 
   const completeOnboarding = async () => {
@@ -2039,7 +2040,7 @@ export default function App() {
 
   if (!user) return <AuthScreen onAuth={setUser} />;
   if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
-  if (user && business && business.onboarded === false) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
+  if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
 
   const pageTitles = {
     Customers: ["Customers", "Add, organize, and manage your customers"],
