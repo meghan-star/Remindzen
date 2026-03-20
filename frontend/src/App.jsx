@@ -192,11 +192,13 @@ function AuthScreen({ onAuth }) {
             )}
             <input style={inputStyle} placeholder="Email address" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
             {mode !== "reset" && (
-              <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-                onKeyDown={e => e.key === "Enter" && handleSubmit()} />
-              {mode === "signup" && form.password.length > 0 && (
-                <PasswordStrength password={form.password} />
-              )}
+              <>
+                <input style={inputStyle} placeholder="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
+                  onKeyDown={e => e.key === "Enter" && handleSubmit()} />
+                {mode === "signup" && form.password.length > 0 && (
+                  <PasswordStrength password={form.password} />
+                )}
+              </>
             )}
             {error && <div style={{ color: "#A32D2D", fontSize: 13, marginBottom: 12, background: "#FCEBEB", padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
             <button onClick={handleSubmit} disabled={loading} style={{ ...btnStyle(true), width: "100%", marginBottom: 16 }}>
