@@ -2011,21 +2011,27 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {!isMobile && (
             <>
-              <button onClick={() => setPage("History")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }} title="View send history">
-                <span style={{ fontSize: 16 }}>🔔</span>
-              </button>
               {billingStatus && (
-                <button onClick={() => setPage("Billing")} title="Message usage this month" style={{ background: "none", border: "none", cursor: "pointer", padding: "3px 8px", borderRadius: 99, display: "flex", alignItems: "center", gap: 5 }}>
-                  <div style={{ width: 32, height: 4, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
-                    <div style={{ height: 4, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#BA7517" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%` }} />
+                <button onClick={() => setPage("Billing")} title="Message usage this month" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 8, border: "1px solid #f0f0f0" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                    <span style={{ fontSize: 11, color: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#A32D2D" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#854F0B" : "#555", whiteSpace: "nowrap", fontWeight: 500 }}>
+                      {billingStatus.messagesUsed}/{billingStatus.messageLimit} msgs
+                    </span>
+                    <div style={{ width: 64, height: 3, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
+                      <div style={{ height: 3, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#BA7517" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%`, transition: "width 0.5s" }} />
+                    </div>
                   </div>
-                  <span style={{ fontSize: 11, color: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#A32D2D" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#854F0B" : "#aaa", whiteSpace: "nowrap" }}>
-                    {billingStatus.messagesUsed}/{billingStatus.messageLimit}
-                  </span>
                 </button>
               )}
-              <div style={{ fontSize: 11, color: "#bbb", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || user?.email}</div>
+              <div style={{ fontSize: 11, color: "#bbb", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || user?.email}</div>
             </>
+          )}
+          {billingStatus && isMobile && (
+            <button onClick={() => {}} title="Message usage" style={{ background: "none", border: "none", cursor: "pointer", padding: "3px 8px", display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 28, height: 3, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
+                <div style={{ height: 3, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%` }} />
+              </div>
+            </button>
           )}
           {isMobile && (
             <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, padding: 4, color: "#555" }}>
