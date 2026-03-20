@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type", "x-admin-uid"] }));
+app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type", "x-admin-uid", "x-business-id"] }));
 app.options("*", cors());
 app.use((req, res, next) => { if (req.path === "/billing/webhook") next(); else express.json()(req, res, next); });
 
