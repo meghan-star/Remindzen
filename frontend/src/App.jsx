@@ -2002,6 +2002,17 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    // Handle Stripe redirect back to app
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("session_id")) {
+      // Payment successful - clean URL and go to billing page
+      window.history.replaceState({}, "", window.location.pathname);
+      setPage("Billing");
+    } else if (params.get("cancelled")) {
+      window.history.replaceState({}, "", window.location.pathname);
+      setPage("Billing");
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
       if (session?.user) loadBusiness(session.user.id);

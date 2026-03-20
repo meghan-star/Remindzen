@@ -328,8 +328,8 @@ app.post("/billing/checkout", async (req, res) => {
         trial_period_days: 14,
         metadata: { businessId, planKey },
       },
-      success_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}/billing/cancel`,
+      success_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}?cancelled=true`,
       metadata: { businessId, planKey },
     });
     res.json({ url: session.url });
