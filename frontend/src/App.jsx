@@ -180,11 +180,29 @@ function AuthScreen({ onAuth }) {
           await supabase.from("invite_codes").update({ uses_count: (code.uses_count || 0) + 1 }).eq("id", code.id);
         }
 
+        // Check for referral code stored from landing page link
+        const storedRef = localStorage.getItem("referral_code");
+        let referredBy = null;
+        if (storedRef) {
+          const { data: refData } = await supabase.from("referral_codes").select("*").eq("code", storedRef).single();
+          if (refData) {
+            trialDays = Math.max(trialDays, 30);
+            referredBy = storedRef;
+            const { data: referrerBiz } = await supabase.from("businesses").select("trial_ends_at").eq("id", refData.business_id).single();
+            if (referrerBiz) {
+              const baseDate = new Date(Math.max(new Date(referrerBiz.trial_ends_at || new Date()).getTime(), Date.now()));
+              const rewardEnd = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+              await supabase.from("businesses").update({ trial_ends_at: rewardEnd.toISOString() }).eq("id", refData.business_id);
+            }
+            localStorage.removeItem("referral_code");
+          }
+        }
+
         const { data, error } = await supabase.auth.signUp({ email: form.email, password: form.password });
         if (error) throw error;
         if (data.user) {
           const trialEnd = new Date(Date.now() + trialDays * 86400000).toISOString();
-          await supabase.from("businesses").insert({ id: data.user.id, name: form.name, email: form.email, trial_ends_at: trialEnd, plan: lockedPlan || "trial" });
+          await supabase.from("businesses").insert({ id: data.user.id, name: form.name, email: form.email, trial_ends_at: trialEnd, plan: lockedPlan || "trial", referred_by: referredBy });
           if (form.inviteCode?.trim()) localStorage.setItem(`invite_code_${data.user.id}`, form.inviteCode.trim().toUpperCase());
           onAuth(data.user);
         }
@@ -436,7 +454,7 @@ function CustomersPage({ user, showToast }) {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
   const [tagInput, setTagInput] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [] });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [], next_appointment: "" });
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -455,7 +473,7 @@ function CustomersPage({ user, showToast }) {
 
   const openEdit = (c) => {
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null, tags: c.tags || [] });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null, tags: c.tags || [], next_appointment: c.next_appointment || "" });
     setShowModal(true);
   };
 
@@ -808,8 +826,18 @@ function SendPage({ user, business, showToast }) {
         showToast(`Sent to ${data.sent} customer${data.sent !== 1 ? "s" : ""}!`, "success");
         setStep(1); setSelected([]); setMsg({ subject: "", body: "" }); setTemplateId(null);
       } else {
-        const errMsg = data.results?.find(r => !r.success)?.error || data.error || "Unknown error";
-        showToast("Send failed: " + errMsg, "error");
+        const errMsg = data.error || data.results?.find(r => !r.success)?.error || "Unknown error";
+        if (errMsg.includes("trial has expired")) {
+          showToast("Your free trial has expired. Please subscribe in the Billing tab.", "error");
+        } else if (errMsg.includes("suspended")) {
+          showToast("Your account has been suspended. Contact support at hello@remindzen.com", "error");
+        } else if (errMsg.includes("Daily send limit")) {
+          showToast("Daily send limit reached — resets at midnight. Upgrade your plan for higher limits.", "error");
+        } else if (errMsg.includes("Monthly message limit")) {
+          showToast("Monthly message limit reached. Upgrade your plan for more messages.", "error");
+        } else {
+          showToast("Send failed: " + errMsg, "error");
+        }
       }
     } catch {
       showToast("Could not connect to server", "error");
@@ -862,12 +890,24 @@ function SendPage({ user, business, showToast }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
               {(tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)) : customers).map(c => (
                 <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${selected.includes(c.id) ? "#185FA5" : "#f0f0f0"}`, background: selected.includes(c.id) ? "#f0f6ff" : "#fff", cursor: "pointer" }}>
-                  <input type="checkbox" checked={selected.includes(c.id)} onChange={() => setSelected(selected.includes(c.id) ? selected.filter(x => x !== c.id) : [...selected, c.id])} style={{ width: 16, height: 16, cursor: "pointer" }} />
+                  <input type="checkbox" checked={selected.includes(c.id)} onChange={() => {
+                    const newSel = selected.includes(c.id) ? selected.filter(x => x !== c.id) : [...selected, c.id];
+                    setSelected(newSel);
+                    if (!selected.includes(c.id) && c.next_appointment) {
+                      const appt = new Date(c.next_appointment);
+                      setVars(v => ({
+                        ...v,
+                        date: v.date || appt.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }),
+                        time: v.time || appt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                      }));
+                    }
+                  }} style={{ width: 16, height: 16, cursor: "pointer" }} />
                   <Avatar name={c.name} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name}</div>
                     <div style={{ fontSize: 12, color: "#888" }}>{c.email} {c.phone && `· ${c.phone}`}</div>
                     {c.notes && <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, fontStyle: "italic" }}>{c.notes}</div>}
+                    {c.next_appointment && <div style={{ fontSize: 11, color: "#185FA5", marginTop: 2 }}>📅 {new Date(c.next_appointment).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</div>}
                   </div>
                   <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
                 </label>
@@ -1276,6 +1316,12 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
           </div>
         </label>
         <button onClick={saveBusiness} disabled={saving} style={btnStyle(true)}>{saving ? "Saving..." : "Save changes"}</button>
+
+        <div style={{ height: 1, background: "#f0f0f0", margin: "28px 0" }} />
+
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Referral program</h3>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 14, lineHeight: 1.6 }}>Share your referral link. When someone signs up using it, they get a 30-day free trial and you get 30 free days added to your subscription.</p>
+        <ReferralSection userId={user.id} />
       </div>
 
       <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
@@ -2149,6 +2195,67 @@ function BillingPage({ user, business }) {
   );
 }
 
+
+// ── Referral Section ──
+
+function ReferralSection({ userId }) {
+  const [referralCode, setReferralCode] = useState(null);
+  const [referralCount, setReferralCount] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    loadReferral();
+  }, []);
+
+  const loadReferral = async () => {
+    const { data } = await supabase.from("referral_codes").select("*").eq("business_id", userId).single();
+    if (data) {
+      setReferralCode(data);
+      const { count } = await supabase.from("businesses").select("*", { count: "exact", head: true }).eq("referred_by", data.code);
+      setReferralCount(count || 0);
+    }
+  };
+
+  const generateCode = async () => {
+    setGenerating(true);
+    const code = "REF" + userId.slice(0, 6).toUpperCase();
+    const { data, error } = await supabase.from("referral_codes").insert({ business_id: userId, code, reward_days: 30 }).select().single();
+    if (!error) setReferralCode(data);
+    setGenerating(false);
+  };
+
+  const referralLink = `https://app.remindzen.com?ref=${referralCode?.code}`;
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (!referralCode) return (
+    <button onClick={generateCode} disabled={generating} style={btnStyle(false)}>
+      {generating ? "Generating..." : "Generate my referral link"}
+    </button>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <input readOnly value={referralLink} style={{ ...inputStyle, marginBottom: 0, flex: 1, fontSize: 13, color: "#555", background: "#f9f9f9" }} />
+        <button onClick={copyLink} style={{ ...btnStyle(copied ? true : false), flexShrink: 0, minWidth: 80 }}>
+          {copied ? "✓ Copied!" : "Copy"}
+        </button>
+      </div>
+      <div style={{ fontSize: 13, color: "#888" }}>
+        {referralCount > 0
+          ? `🎉 ${referralCount} business${referralCount !== 1 ? "es" : ""} signed up using your link — ${referralCount * 30} free days earned!`
+          : "No referrals yet — share your link to start earning free days!"}
+      </div>
+    </div>
+  );
+}
+
 // ── Contact Page ──
 
 function ContactPage() {
@@ -2372,8 +2479,15 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // Handle Stripe redirect back to app
+    // Handle referral code in URL
     const params = new URLSearchParams(window.location.search);
+    const refCode = params.get("ref");
+    if (refCode) {
+      localStorage.setItem("referral_code", refCode.toUpperCase());
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    // Handle Stripe redirect back to app
     if (params.get("session_id")) {
       // Payment successful - clean URL and go to billing page
       window.history.replaceState({}, "", window.location.pathname);
