@@ -2404,7 +2404,7 @@ function LegalPage() {
           <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at the address below. California residents may have additional rights under the CCPA.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Contact</h3>
-          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
+          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
         </div>
       )}
     </div>
@@ -2421,8 +2421,8 @@ function AppHeader({ page, setPage, user, business, billingStatus, darkMode, set
 
   const primaryNav = ["Dashboard", "Customers", "Send Reminder", "Schedules", "History", "Billing"];
   const secondaryNav = isAdmin
-    ? ["Templates", "Settings", "Legal", "Contact", "Admin"]
-    : ["Templates", "Settings", "Legal", "Contact"];
+    ? ["Templates", "Settings", "Feedback", "Legal", "Contact", "Admin"]
+    : ["Templates", "Settings", "Feedback", "Legal", "Contact"];
 
   const allNav = [...primaryNav, ...secondaryNav];
   const isSecondary = secondaryNav.includes(page);
