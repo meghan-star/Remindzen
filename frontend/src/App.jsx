@@ -2290,7 +2290,7 @@ function ContactPage() {
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✉️</div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>Email support</div>
-              <a href="mailto:remindzenco@gmail.com" style={{ fontSize: 13, color: "#185FA5" }}>remindzenco@gmail.com</a>
+              <a href="mailto:hello@remindzen.com" style={{ fontSize: 13, color: "#185FA5" }}>hello@remindzen.com</a>
               <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>We typically respond within 1 business day</div>
             </div>
           </div>
@@ -2320,7 +2320,7 @@ function ContactPage() {
       </div>
 
       <div style={{ background: "var(--bg-hover)", borderRadius: 12, padding: "20px 24px", fontSize: 13, color: "var(--text-hint)", lineHeight: 1.7 }}>
-        <strong style={{ color: "var(--text-muted)" }}>Remind Zen LLC</strong> · Ventura, CA · <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>
+        <strong style={{ color: "var(--text-muted)" }}>Remind Zen LLC</strong> · Ventura, CA · <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a>
       </div>
     </div>
   );
@@ -2371,7 +2371,7 @@ function LegalPage() {
           <p>We reserve the right to update these Terms at any time. We will notify you of significant changes by email or by posting a notice within the Service. Your continued use of the Service after changes constitutes your acceptance of the new Terms.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Contact</h3>
-          <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>.</p>
+          <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a>.</p>
         </div>
       )}
 
