@@ -2462,7 +2462,7 @@ function LegalPage() {
 
 // ── App Header ──
 
-function AppHeader({ page, setPage: navigateTo, user, business, billingStatus, darkMode, setDarkMode }) {
+function AppHeader({ page, setPage, user, business, billingStatus, darkMode, setDarkMode }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = user?.id === ADMIN_UID;
@@ -2589,8 +2589,8 @@ export default function App() {
     const validPages = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact", "Feedback", "Admin"];
     return validPages.includes(hash) ? hash : "Dashboard";
   });
-  const [toast, setToast] = useState(null);
   const navigateTo = (p) => { setPage(p); window.location.hash = p; };
+  const [toast, setToast] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
@@ -2617,7 +2617,7 @@ export default function App() {
     if (params.get("session_id")) {
       // Payment successful - clean URL and go to billing page
       window.history.replaceState({}, "", window.location.pathname);
-      setPage("Billing");
+      setTimeout(() => navigateTo("Billing"), 100);
     } else if (params.get("cancelled")) {
       window.history.replaceState({}, "", window.location.pathname);
       setPage("Billing");
@@ -2693,13 +2693,13 @@ export default function App() {
         {billingStatus?.trialActive && billingStatus?.trialDaysLeft <= 3 && page !== "Billing" && (
           <div style={{ background: "#FAEEDA", border: "1px solid #FAC775", borderRadius: 10, padding: "10px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 13, color: "#633806", fontWeight: 500 }}>⚠️ Your free trial ends in {billingStatus.trialDaysLeft} day{billingStatus.trialDaysLeft !== 1 ? "s" : ""}</span>
-            <button onClick={() => setPage("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#854F0B" }}>Subscribe now →</button>
+            <button onClick={() => navigateTo("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#854F0B" }}>Subscribe now →</button>
           </div>
         )}
         {billingStatus?.plan === "cancelled" && page !== "Billing" && (
           <div style={{ background: "#FCEBEB", border: "1px solid #f7c1c1", borderRadius: 10, padding: "10px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 13, color: "#A32D2D", fontWeight: 500 }}>Your subscription has ended — sending is disabled</span>
-            <button onClick={() => setPage("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#A32D2D" }}>Resubscribe →</button>
+            <button onClick={() => navigateTo("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#A32D2D" }}>Resubscribe →</button>
           </div>
         )}
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{pageTitles[page]?.[0]}</h1>
