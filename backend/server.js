@@ -17,7 +17,7 @@ const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_A
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 const DAILY_LIMIT = parseInt(process.env.DAILY_SEND_LIMIT || "100");
-const ADMIN_EMAIL = "remindzenco@gmail.com";
+const ADMIN_EMAIL = "hello@remindzen.com";
 
 // ── Rate limiting ──
 

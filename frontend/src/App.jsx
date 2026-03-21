@@ -1487,14 +1487,31 @@ function FeedbackForm({ user, business, showToast }) {
     try {
       const { data: biz } = await supabase.from("businesses").select("plan").eq("id", user.id).single();
       const isPro = biz?.plan === "pro";
+      const feedbackType = isPro ? `pro_priority_${form.type}` : form.type;
+      const feedbackSubject = isPro ? `[PRO] ${form.subject}` : form.subject;
+
       await supabase.from("feedback").insert({
         business_id: user.id,
         business_name: business?.name || "",
         email: user.email,
-        type: isPro ? `pro_priority_${form.type}` : form.type,
-        subject: isPro ? `[PRO] ${form.subject}` : form.subject,
+        type: feedbackType,
+        subject: feedbackSubject,
         message: form.message,
       });
+
+      // Also notify via email
+      fetch(`${API}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: feedbackType,
+          subject: feedbackSubject,
+          message: form.message,
+          businessName: business?.name || "Unknown",
+          email: user.email,
+        }),
+      }).catch(() => {}); // fire and forget — don't block on email
+
       setSubmitted(true);
       showToast("Feedback submitted — thank you!", "success");
     } catch (e) {
