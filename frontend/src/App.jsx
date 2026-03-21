@@ -2462,7 +2462,7 @@ function LegalPage() {
 
 // ── App Header ──
 
-function AppHeader({ page, setPage, user, business, billingStatus, darkMode, setDarkMode }) {
+function AppHeader({ page, setPage: navigateTo, user, business, billingStatus, darkMode, setDarkMode }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = user?.id === ADMIN_UID;
@@ -2584,8 +2584,13 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [business, setBusiness] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [page, setPage] = useState("Dashboard");
+  const [page, setPage] = useState(() => {
+    const hash = window.location.hash.replace("#", "");
+    const validPages = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact", "Feedback", "Admin"];
+    return validPages.includes(hash) ? hash : "Dashboard";
+  });
   const [toast, setToast] = useState(null);
+  const navigateTo = (p) => { setPage(p); window.location.hash = p; };
   const [billingStatus, setBillingStatus] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
@@ -2682,7 +2687,7 @@ export default function App() {
     <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", minHeight: "100vh", background: "var(--bg-page)", color: "var(--text-primary)" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 
-      <AppHeader page={page} setPage={setPage} user={user} business={business} billingStatus={billingStatus} darkMode={darkMode} setDarkMode={setDarkMode} />
+      <AppHeader page={page} setPage={navigateTo} user={user} business={business} billingStatus={billingStatus} darkMode={darkMode} setDarkMode={setDarkMode} />
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
         {billingStatus?.trialActive && billingStatus?.trialDaysLeft <= 3 && page !== "Billing" && (
@@ -2700,7 +2705,7 @@ export default function App() {
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{pageTitles[page]?.[0]}</h1>
         <p style={{ margin: "0 0 28px", color: "var(--text-hint)", fontSize: 14 }}>{pageTitles[page]?.[1]}</p>
 
-        {page === "Dashboard" && <DashboardPage user={user} business={business} billingStatus={billingStatus} setPage={setPage} />}
+        {page === "Dashboard" && <DashboardPage user={user} business={business} billingStatus={billingStatus} setPage={navigateTo} />}
         {page === "Customers" && <CustomersPage user={user} showToast={showToast} />}
         {page === "Send Reminder" && <SendPage user={user} business={business} showToast={showToast} />}
         {page === "Templates" && <TemplatesPage showToast={showToast} />}

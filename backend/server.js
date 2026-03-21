@@ -291,13 +291,13 @@ app.post("/feedback", async (req, res) => {
     await sgMail.send({
       to: ADMIN_EMAIL,
       from: process.env.FROM_EMAIL,
-      subject: `[Remind Zen Feedback] ${type.toUpperCase()}: ${subject}`,
+      subject: `[Remind Zen Feedback] ${(type || "feedback").replace("pro_priority_", "").toUpperCase()}: ${subject}`,
       text: `From: ${businessName} (${email})\nType: ${type}\nSubject: ${subject}\n\n${message}`,
       html: `<h3>New Feedback — ${type}</h3><p><strong>From:</strong> ${businessName} (${email})</p><p><strong>Subject:</strong> ${subject}</p><p>${message.replace(/\n/g, "<br/>")}</p>`,
     });
     res.json({ success: true });
   } catch (err) {
-    console.error("Feedback email error:", err.message);
+    console.error("Feedback email error:", err.message, err?.response?.body);
     res.json({ success: false, error: err.message });
   }
 });
