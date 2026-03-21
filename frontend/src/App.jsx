@@ -1476,7 +1476,7 @@ function AccountDeletionSection({ user, showToast }) {
 
 // ── Feedback Page ──
 
-function FeedbackPage({ user, business, showToast }) {
+function FeedbackForm({ user, business, showToast }) {
   const [form, setForm] = useState({ type: "bug", subject: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -1504,34 +1504,38 @@ function FeedbackPage({ user, business, showToast }) {
     }
   };
 
-  if (submitted) {
-    return (
-      <div style={{ maxWidth: 560, textAlign: "center", padding: "60px 0" }}>
-        <div style={{ fontSize: 40, marginBottom: 16 }}>🙏</div>
-        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>Thank you for your feedback!</h2>
-        <p style={{ color: "var(--text-hint)", fontSize: 14, margin: "0 0 24px" }}>We review every submission and use it to improve Remind Zen.</p>
-        <button onClick={() => { setSubmitted(false); setForm({ type: "bug", subject: "", message: "" }); }} style={btnStyle(false)}>Submit another</button>
-      </div>
-    );
-  }
+  if (submitted) return (
+    <div style={{ textAlign: "center", padding: "24px 0" }}>
+      <div style={{ fontSize: 36, marginBottom: 12 }}>🙏</div>
+      <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 600 }}>Thank you!</h3>
+      <p style={{ color: "var(--text-hint)", fontSize: 14, margin: "0 0 16px" }}>We review every submission and use it to improve Remind Zen.</p>
+      <button onClick={() => { setSubmitted(false); setForm({ type: "bug", subject: "", message: "" }); }} style={btnStyle(false)}>Submit another</button>
+    </div>
+  );
 
   return (
-    <div style={{ maxWidth: 560, width: "100%" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {[["bug", "🐛 Bug report"], ["feature", "✨ Feature request"], ["other", "💬 Other"]].map(([val, label]) => (
-          <button key={val} onClick={() => setForm({ ...form, type: val })} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: form.type === val ? "#185FA5" : "#f0f0f0", color: form.type === val ? "#fff" : "#555", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+          <button key={val} onClick={() => setForm({ ...form, type: val })} style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: form.type === val ? "#185FA5" : "var(--bg-hover)", color: form.type === val ? "#fff" : "var(--text-secondary)", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             {label}
           </button>
         ))}
       </div>
-      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "24px 28px" }}>
-        <input style={inputStyle} placeholder="Subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
-        <textarea style={{ ...inputStyle, minHeight: 140, resize: "vertical" }} placeholder={form.type === "bug" ? "Describe the bug — what happened, and what did you expect to happen?" : form.type === "feature" ? "Describe the feature you'd like to see and why it would be helpful." : "What's on your mind?"} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} />
-        <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 16 }}>Submitting as {user.email} · {business?.name}</div>
-        <button onClick={handleSubmit} disabled={submitting || !form.subject.trim() || !form.message.trim()} style={{ ...btnStyle(true), opacity: (!form.subject.trim() || !form.message.trim()) ? 0.4 : 1 }}>
-          {submitting ? "Submitting..." : "Submit feedback"}
-        </button>
-      </div>
+      <input style={inputStyle} placeholder="Subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+      <textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} placeholder={form.type === "bug" ? "Describe the bug — what happened, and what did you expect to happen?" : form.type === "feature" ? "Describe the feature you'd like to see and why it would be helpful." : "What's on your mind?"} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} />
+      <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 14 }}>Submitting as {user.email} · {business?.name}</div>
+      <button onClick={handleSubmit} disabled={submitting || !form.subject.trim() || !form.message.trim()} style={{ ...btnStyle(true), opacity: (!form.subject.trim() || !form.message.trim()) ? 0.4 : 1 }}>
+        {submitting ? "Submitting..." : "Submit feedback"}
+      </button>
+    </div>
+  );
+}
+
+function FeedbackPage({ user, business, showToast }) {
+  return (
+    <div style={{ maxWidth: 560, width: "100%" }}>
+      <FeedbackForm user={user} business={business} showToast={showToast} />
     </div>
   );
 }
@@ -2277,7 +2281,7 @@ function ReferralSection({ userId }) {
 
 // ── Contact Page ──
 
-function ContactPage() {
+function ContactPage({ user, business, showToast }) {
   return (
     <div style={{ maxWidth: 600 }}>
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
@@ -2285,23 +2289,21 @@ function ContactPage() {
         <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7 }}>
           Have a question, found a bug, or need help with your account? We're here to help.
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: "#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✉️</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Email support</div>
-              <a href="mailto:hello@remindzen.com" style={{ fontSize: 13, color: "#185FA5" }}>hello@remindzen.com</a>
-              <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>We typically respond within 1 business day</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EEEDFE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>💬</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>In-app feedback</div>
-              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Use the "Send feedback" button at the top of any page to submit bug reports or feature requests directly.</div>
-            </div>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✉️</div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Email support</div>
+            <a href="mailto:hello@remindzen.com" style={{ fontSize: 13, color: "#185FA5" }}>hello@remindzen.com</a>
+            <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>We typically respond within 1 business day</div>
           </div>
         </div>
+      </div>
+
+      {/* Feedback form embedded in Contact */}
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 600 }}>Send feedback</h3>
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7 }}>Report a bug, suggest a feature, or share any thoughts.</p>
+        <FeedbackForm user={user} business={business} showToast={showToast} />
       </div>
 
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
@@ -2421,8 +2423,8 @@ function AppHeader({ page, setPage, user, business, billingStatus, darkMode, set
 
   const primaryNav = ["Dashboard", "Customers", "Send Reminder", "Schedules", "History", "Billing"];
   const secondaryNav = isAdmin
-    ? ["Templates", "Settings", "Feedback", "Legal", "Contact", "Admin"]
-    : ["Templates", "Settings", "Feedback", "Legal", "Contact"];
+    ? ["Templates", "Settings", "Legal", "Contact", "Admin"]
+    : ["Templates", "Settings", "Legal", "Contact"];
 
   const allNav = [...primaryNav, ...secondaryNav];
   const isSecondary = secondaryNav.includes(page);
@@ -2664,7 +2666,7 @@ export default function App() {
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
         {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
         {page === "Admin" && user?.id === ADMIN_UID && <AdminPage />}
-        {page === "Contact" && <ContactPage />}
+        {page === "Contact" && <ContactPage user={user} business={business} showToast={showToast} />}
         
       </div>
 
