@@ -10,6 +10,77 @@
       input, textarea, select, button { font-family: inherit; font-size: 16px; }
       button { -webkit-tap-highlight-color: transparent; }
     </style>
+
+    <style>
+      :root, [data-theme="light"] {
+        --bg-page: #f7f8fa;
+        --bg-card: #ffffff;
+        --bg-input: #ffffff;
+        --bg-hover: #f5f5f5;
+        --bg-selected: #f0f6ff;
+        --border: #f0f0f0;
+        --border-mid: #e0e0e0;
+        --text-primary: #1a1a1a;
+        --text-secondary: #555;
+        --text-muted: #888;
+        --text-hint: #aaa;
+        --text-placeholder: #bbb;
+        --nav-bg: #ffffff;
+        --nav-border: #f0f0f0;
+        --modal-overlay: rgba(0,0,0,0.45);
+        --shadow: rgba(0,0,0,0.06);
+      }
+
+      [data-theme="dark"] {
+        --bg-page: #0f1117;
+        --bg-card: #1a1d24;
+        --bg-input: #1e2128;
+        --bg-hover: #22262e;
+        --bg-selected: #1a2a3a;
+        --border: #2a2d35;
+        --border-mid: #333740;
+        --text-primary: #eeeef0;
+        --text-secondary: #a8aab8;
+        --text-muted: #8b8fa8;
+        --text-hint: #6b6f85;
+        --text-placeholder: #555870;
+        --nav-bg: #13151c;
+        --nav-border: #2a2d35;
+        --modal-overlay: rgba(0,0,0,0.65);
+        --shadow: rgba(0,0,0,0.3);
+      }
+
+      [data-theme="dark"] body {
+        background: var(--bg-page);
+        color: var(--text-primary);
+      }
+
+      /* Inputs */
+      [data-theme="dark"] input,
+      [data-theme="dark"] textarea,
+      [data-theme="dark"] select {
+        background: var(--bg-input) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-mid) !important;
+      }
+
+      [data-theme="dark"] input::placeholder,
+      [data-theme="dark"] textarea::placeholder {
+        color: var(--text-placeholder) !important;
+      }
+
+      /* Scrollbars */
+      [data-theme="dark"] ::-webkit-scrollbar { width: 6px; }
+      [data-theme="dark"] ::-webkit-scrollbar-track { background: var(--bg-page); }
+      [data-theme="dark"] ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 99px; }
+
+      /* Details/summary */
+      [data-theme="dark"] details summary { color: var(--text-primary) !important; }
+      [data-theme="dark"] details p { color: var(--text-muted) !important; }
+
+      /* Selections */
+      [data-theme="dark"] ::selection { background: #185FA5; color: white; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

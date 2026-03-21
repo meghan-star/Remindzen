@@ -65,10 +65,10 @@ function Toast({ msg, type, onClose }) {
 function Modal({ title, onClose, children }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, padding: "0" }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px", width: "100%", maxWidth: 560, position: "relative", maxHeight: "92vh", overflowY: "auto" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: "16px 16px 0 0", padding: "24px 20px", width: "100%", maxWidth: 560, position: "relative", maxHeight: "92vh", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>{title}</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888", lineHeight: 1 }}>×</button>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>{title}</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-muted)", lineHeight: 1 }}>×</button>
         </div>
         {children}
       </div>
@@ -79,7 +79,7 @@ function Modal({ title, onClose, children }) {
 const inputStyle = {
   width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #e0e0e0",
   fontSize: 14, boxSizing: "border-box", outline: "none", marginBottom: 12,
-  fontFamily: "inherit", background: "#fafafa",
+  fontFamily: "inherit", background: "var(--bg-hover)",
 };
 
 const btnStyle = (primary) => ({
@@ -128,7 +128,7 @@ function SmsCounter({ body }) {
       <span style={{ fontSize: 12, color: over ? "#A32D2D" : "#aaa" }}>
         {chars} chars · {over ? `${segments} SMS segments (costs ${segments}x)` : "1 SMS segment"}
       </span>
-      <span style={{ fontSize: 12, color: "#aaa" }}>{remaining} until next segment</span>
+      <span style={{ fontSize: 12, color: "var(--text-hint)" }}>{remaining} until next segment</span>
     </div>
   );
 }
@@ -223,7 +223,7 @@ function AuthScreen({ onAuth }) {
       <div style={{ background: "#fff", borderRadius: 16, padding: "40px 36px", width: "100%", maxWidth: 420, boxShadow: "0 2px 24px rgba(0,0,0,0.07)" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <img src={logo} alt="Remind Zen" style={{ width: 100, marginBottom: 4 }} />
-          <div style={{ fontSize: 13, color: "#aaa", marginTop: 4 }}>
+          <div style={{ fontSize: 13, color: "var(--text-hint)", marginTop: 4 }}>
             {mode === "login" ? "Sign in to your account" : mode === "signup" ? "Create your business account" : "Reset your password"}
           </div>
         </div>
@@ -262,7 +262,7 @@ function AuthScreen({ onAuth }) {
                 <button onClick={() => setMode("signup")} style={{ background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 13 }}>
                   Don't have an account? Sign up
                 </button>
-                <button onClick={() => setMode("reset")} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13 }}>
+                <button onClick={() => setMode("reset")} style={{ background: "none", border: "none", color: "var(--text-hint)", cursor: "pointer", fontSize: 13 }}>
                   Forgot password?
                 </button>
               </>}
@@ -322,16 +322,16 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
     return "Good evening";
   };
 
-  if (loading) return <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>Loading dashboard...</div>;
+  if (loading) return <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-hint)" }}>Loading dashboard...</div>;
 
   return (
     <div style={{ maxWidth: 860 }}>
       {/* Greeting */}
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
           {greeting()}, {business?.name || "there"} 👋
         </h2>
-        <p style={{ fontSize: 14, color: "#aaa" }}>Here's what's happening with your reminders this month.</p>
+        <p style={{ fontSize: 14, color: "var(--text-hint)" }}>Here's what's happening with your reminders this month.</p>
       </div>
 
       {/* Stats grid */}
@@ -342,21 +342,21 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
           { label: "Active schedules", value: stats.schedules, color: "#534AB7", bg: "#EEEDFE", action: () => setPage("Schedules") },
           { label: "Failed this month", value: stats.failed, color: stats.failed > 0 ? "#A32D2D" : "#888", bg: stats.failed > 0 ? "#FCEBEB" : "#f5f5f5", action: () => setPage("History") },
         ].map(s => (
-          <div key={s.label} onClick={s.action} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px", cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s" }}
+          <div key={s.label} onClick={s.action} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: "#888" }}>{s.label}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Usage meter */}
       {billingStatus && (
-        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Message usage</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Message usage</span>
               <span style={{ marginLeft: 10, fontSize: 12, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{planInfo[billingStatus.plan] || "Trial"}</span>
             </div>
             <span style={{ fontSize: 13, fontWeight: 600, color: usagePct > 90 ? "#A32D2D" : "#1a1a1a" }}>{billingStatus.messagesUsed} / {billingStatus.messageLimit}</span>
@@ -375,13 +375,13 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
         {/* Recent sends */}
-        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 20px" }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "18px 20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Recent sends</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Recent sends</span>
             <button onClick={() => setPage("History")} style={{ background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>View all →</button>
           </div>
           {recentHistory.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "20px 0", color: "#aaa", fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-hint)", fontSize: 13 }}>
               No messages sent yet.
               <br />
               <button onClick={() => setPage("Send Reminder")} style={{ marginTop: 8, background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 13, fontFamily: "inherit", textDecoration: "underline" }}>Send your first reminder →</button>
@@ -389,8 +389,8 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
           ) : recentHistory.map(h => (
             <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "0.5px solid #f5f5f5" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.customer_name}</div>
-                <div style={{ fontSize: 11, color: "#aaa" }}>{new Date(h.sent_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.customer_name}</div>
+                <div style={{ fontSize: 11, color: "var(--text-hint)" }}>{new Date(h.sent_at).toLocaleDateString()}</div>
               </div>
               <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: h.status === "sent" ? "#EAF3DE" : "#FCEBEB", color: h.status === "sent" ? "#3B6D11" : "#A32D2D", flexShrink: 0 }}>{h.status}</span>
             </div>
@@ -398,13 +398,13 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
         </div>
 
         {/* Upcoming schedules */}
-        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 20px" }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "18px 20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Active schedules</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Active schedules</span>
             <button onClick={() => setPage("Schedules")} style={{ background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Manage →</button>
           </div>
           {upcomingSchedules.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "20px 0", color: "#aaa", fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-hint)", fontSize: 13 }}>
               No active schedules.
               <br />
               <button onClick={() => setPage("Schedules")} style={{ marginTop: 8, background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 13, fontFamily: "inherit", textDecoration: "underline" }}>Create a schedule →</button>
@@ -412,18 +412,18 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
           ) : upcomingSchedules.map(s => (
             <div key={s.id} style={{ padding: "8px 0", borderBottom: "0.5px solid #f5f5f5" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{s.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{s.name}</div>
                 <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: "#EAF3DE", color: "#3B6D11", flexShrink: 0, marginLeft: 8 }}>Active</span>
               </div>
-              <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{s.cadence} · {s.send_time} · {s.channel?.toUpperCase()}</div>
+              <div style={{ fontSize: 11, color: "var(--text-hint)", marginTop: 2 }}>{s.cadence} · {s.send_time} · {s.channel?.toUpperCase()}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Quick actions */}
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 22px" }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Quick actions</div>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "18px 22px" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 14 }}>Quick actions</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {[
             { label: "✉️ Send a reminder", page: "Send Reminder" },
@@ -431,7 +431,7 @@ function DashboardPage({ user, business, billingStatus, setPage }) {
             { label: "🗓 Create a schedule", page: "Schedules" },
             { label: "📋 Browse templates", page: "Templates" },
           ].map(a => (
-            <button key={a.label} onClick={() => setPage(a.page)} style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid #e8e8e8", background: "#fafafa", color: "#444", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, transition: "all 0.15s" }}
+            <button key={a.label} onClick={() => setPage(a.page)} style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid #e8e8e8", background: "var(--bg-hover)", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, transition: "all 0.15s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#E6F1FB"; e.currentTarget.style.borderColor = "#b5d4f4"; e.currentTarget.style.color = "#185FA5"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "#fafafa"; e.currentTarget.style.borderColor = "#e8e8e8"; e.currentTarget.style.color = "#444"; }}>
               {a.label}
@@ -624,7 +624,7 @@ function CustomersPage({ user, showToast }) {
       </div>
 
       {bulkSelected.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: "#f0f6ff", borderRadius: 10, marginBottom: 12, border: "1px solid #b5d4f4" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: "var(--bg-selected)", borderRadius: 10, marginBottom: 12, border: "1px solid #b5d4f4" }}>
           <span style={{ fontSize: 14, color: "#185FA5", fontWeight: 500 }}>{bulkSelected.length} selected</span>
           <button onClick={handleBulkDelete} style={{ ...btnStyle(false), fontSize: 13, padding: "5px 14px", color: "#A32D2D", borderColor: "#f7c1c1" }}>Delete selected</button>
           <button onClick={() => setBulkSelected([])} style={{ ...btnStyle(false), fontSize: 13, padding: "5px 14px" }}>Clear selection</button>
@@ -645,9 +645,9 @@ function CustomersPage({ user, showToast }) {
       )}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>Loading...</div>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-hint)" }}>Loading...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-hint)" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
           <p style={{ margin: 0 }}>{customers.length === 0 ? "No customers yet. Add your first one!" : "No customers match your search."}</p>
         </div>
@@ -658,12 +658,12 @@ function CustomersPage({ user, showToast }) {
               <input type="checkbox" checked={bulkSelected.includes(c.id)} onChange={() => setBulkSelected(bulkSelected.includes(c.id) ? bulkSelected.filter(x => x !== c.id) : [...bulkSelected, c.id])} style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
               <Avatar name={c.name} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>{c.name}</div>
-                <div style={{ fontSize: 13, color: "#888", marginTop: 2, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-primary)" }}>{c.name}</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, display: "flex", gap: 14, flexWrap: "wrap" }}>
                   {c.email && <span>✉ {c.email}</span>}
                   {c.phone && <span>📱 {c.phone}</span>}
                 </div>
-                {c.notes && <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{c.notes}</div>}
+                {c.notes && <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 4 }}>{c.notes}</div>}
                 {c.tags && c.tags.length > 0 && (
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
                     {c.tags.map(tag => (
@@ -676,7 +676,7 @@ function CustomersPage({ user, showToast }) {
                 <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
                 {c.unsubscribed && <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: "#F1EFE8", color: "#5F5E5A" }}>Opted out</span>}
               </div>
-              <button onClick={() => openEdit(c)} title="Edit" style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 15, padding: 4 }}>✏️</button>
+              <button onClick={() => openEdit(c)} title="Edit" style={{ background: "none", border: "none", color: "var(--text-hint)", cursor: "pointer", fontSize: 15, padding: 4 }}>✏️</button>
               <button onClick={() => handleDelete(c.id, c.name)} title="Delete" style={{ background: "none", border: "none", color: "#ddd", cursor: "pointer", fontSize: 15, padding: 4 }}>🗑</button>
             </div>
           ))}
@@ -689,7 +689,7 @@ function CustomersPage({ user, showToast }) {
           <input style={inputStyle} placeholder="Email address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
           <input style={inputStyle} placeholder="Phone number (+1XXXXXXXXXX)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
           <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} placeholder="Notes (optional)" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Tags</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Tags</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
             {(form.tags || []).map(tag => (
               <span key={tag} style={{ background: "#EEEDFE", color: "#3C3489", fontSize: 12, padding: "3px 10px", borderRadius: 99, display: "flex", alignItems: "center", gap: 6 }}>
@@ -704,18 +704,18 @@ function CustomersPage({ user, showToast }) {
               onKeyDown={e => { if (e.key === "Enter" && tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); e.preventDefault(); } }} />
             <button onClick={() => { if (tagInput.trim()) { const t = tagInput.trim(); if (!(form.tags||[]).includes(t)) setForm({ ...form, tags: [...(form.tags||[]), t] }); setTagInput(""); }}} style={{ ...btnStyle(false), padding: "9px 16px" }}>Add</button>
           </div>
-          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Preferred reminder channel</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Preferred reminder channel</label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.preferred_channel} onChange={e => setForm({ ...form, preferred_channel: e.target.value })}>
             <option value="email">Email</option>
             <option value="sms">SMS</option>
             <option value="both">Email + SMS</option>
           </select>
-          <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 4, paddingTop: 16, marginBottom: 12 }}>
+          <div style={{ borderTop: "1px solid var(--border)", marginTop: 4, paddingTop: 16, marginBottom: 12 }}>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 12 }}>
               <input type="checkbox" checked={form.sms_consent} onChange={e => setForm({ ...form, sms_consent: e.target.checked, sms_consent_at: e.target.checked ? new Date().toISOString() : null })} style={{ width: 16, height: 16, cursor: "pointer", marginTop: 2, flexShrink: 0 }} />
               <div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: "#1a1a1a" }}>SMS consent given</div>
-                <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Customer has agreed to receive SMS reminders. Required by TCPA before sending text messages.{form.sms_consent_at && <span style={{ display: "block", marginTop: 2, color: "#3B6D11" }}>Consent recorded {new Date(form.sms_consent_at).toLocaleDateString()}</span>}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>SMS consent given</div>
+                <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>Customer has agreed to receive SMS reminders. Required by TCPA before sending text messages.{form.sms_consent_at && <span style={{ display: "block", marginTop: 2, color: "#3B6D11" }}>Consent recorded {new Date(form.sms_consent_at).toLocaleDateString()}</span>}</div>
               </div>
             </label>
             {editingCustomer && (
@@ -725,7 +725,7 @@ function CustomersPage({ user, showToast }) {
                   <div style={{ fontSize: 14, fontWeight: 500, color: form.unsubscribed ? "#A32D2D" : "#1a1a1a" }}>
                     {form.unsubscribed ? "Customer is opted out" : "Opt out of reminders"}
                   </div>
-                  <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>
                     {form.unsubscribed ? "This customer will not receive any reminders. Uncheck to resubscribe." : "Check this to stop sending reminders to this customer."}
                   </div>
                 </div>
@@ -871,7 +871,7 @@ function SendPage({ user, business, showToast }) {
       {step === 1 && (
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <p style={{ margin: 0, color: "#888", fontSize: 14 }}>{selected.length} selected — opted-out customers are hidden</p>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>{selected.length} selected — opted-out customers are hidden</p>
             <button onClick={() => { const visible = tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)) : customers; setSelected(selected.length === visible.length ? [] : visible.map(c => c.id)); }} style={{ ...btnStyle(false), fontSize: 13, padding: "6px 14px" }}>
               {selected.length === (tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)).length : customers.length) ? "Deselect All" : "Select All"}
             </button>
@@ -885,7 +885,7 @@ function SendPage({ user, business, showToast }) {
             </div>
           )}
           {customers.length === 0 ? (
-            <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No customers yet. Add some from the Customers tab.</p>
+            <p style={{ color: "var(--text-hint)", textAlign: "center", padding: "40px 0" }}>No customers yet. Add some from the Customers tab.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
               {(tagFilter ? customers.filter(c => (c.tags||[]).includes(tagFilter)) : customers).map(c => (
@@ -905,8 +905,8 @@ function SendPage({ user, business, showToast }) {
                   <Avatar name={c.name} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: "#888" }}>{c.email} {c.phone && `· ${c.phone}`}</div>
-                    {c.notes && <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, fontStyle: "italic" }}>{c.notes}</div>}
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.email} {c.phone && `· ${c.phone}`}</div>
+                    {c.notes && <div style={{ fontSize: 11, color: "var(--text-hint)", marginTop: 2, fontStyle: "italic" }}>{c.notes}</div>}
                     {c.next_appointment && <div style={{ fontSize: 11, color: "#185FA5", marginTop: 2 }}>📅 {new Date(c.next_appointment).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</div>}
                   </div>
                   <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
@@ -920,7 +920,7 @@ function SendPage({ user, business, showToast }) {
 
       {step === 2 && (
         <div>
-          <div style={{ background: "#f9f9f9", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ background: "var(--bg-hover)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" checked={usePreferred} onChange={e => setUsePreferred(e.target.checked)} />
               <span style={{ fontSize: 14, fontWeight: 500 }}>Use each customer's preferred channel</span>
@@ -936,7 +936,7 @@ function SendPage({ user, business, showToast }) {
             )}
           </div>
 
-          <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Quick templates</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10 }}>Quick templates</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
             {TEMPLATES.map(t => (
               <button key={t.id} onClick={() => applyTemplate(t)} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${templateId === t.id ? "#185FA5" : "#e8e8e8"}`, background: templateId === t.id ? "#f0f6ff" : "#fff", color: templateId === t.id ? "#185FA5" : "#555", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
@@ -953,7 +953,7 @@ function SendPage({ user, business, showToast }) {
             )}
           </div>
 
-          <p style={{ fontSize: 13, color: "#888", marginBottom: 10 }}>Fill in variables (optional)</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10 }}>Fill in variables (optional)</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 20 }}>
             <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="{date}" value={vars.date} onChange={e => setVars({ ...vars, date: e.target.value })} />
             <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="{time}" value={vars.time} onChange={e => setVars({ ...vars, time: e.target.value })} />
@@ -972,27 +972,27 @@ function SendPage({ user, business, showToast }) {
 
       {step === 3 && (
         <div>
-          <div style={{ background: "#f9f9f9", borderRadius: 12, padding: "20px 24px", marginBottom: 20, border: "1px solid #f0f0f0" }}>
-            <p style={{ margin: "0 0 12px", fontSize: 14, color: "#888" }}>
+          <div style={{ background: "var(--bg-hover)", borderRadius: 12, padding: "20px 24px", marginBottom: 20, border: "1px solid var(--border)" }}>
+            <p style={{ margin: "0 0 12px", fontSize: 14, color: "var(--text-muted)" }}>
               Sending to {selected.length} customer{selected.length > 1 ? "s" : ""} · {usePreferred ? "using each customer's preferred channel" : overrideChannel === "both" ? "Email + SMS" : overrideChannel.toUpperCase()}
             </p>
             {msg.subject && <p style={{ margin: "0 0 8px", fontSize: 14 }}><strong>Subject:</strong> {msg.subject}</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {customers.filter(c => selected.includes(c.id)).slice(0, 3).map(c => (
                 <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "12px 16px", border: "1px solid #eee", fontSize: 13, lineHeight: 1.7, color: "#333" }}>
-                  <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4, fontWeight: 500 }}>Preview for {c.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-hint)", marginBottom: 4, fontWeight: 500 }}>Preview for {c.name}</div>
                   <div style={{ whiteSpace: "pre-wrap" }}>{resolveBody(msg.body, c.name)}</div>
                 </div>
               ))}
-              {selected.length > 3 && <div style={{ fontSize: 12, color: "#aaa", textAlign: "center" }}>+ {selected.length - 3} more recipients</div>}
+              {selected.length > 3 && <div style={{ fontSize: 12, color: "var(--text-hint)", textAlign: "center" }}>+ {selected.length - 3} more recipients</div>}
             </div>
-            <div style={{ marginTop: 12, padding: "10px 14px", background: "#f0f0f0", borderRadius: 8, fontSize: 12, color: "#888" }}>
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "#f0f0f0", borderRadius: 8, fontSize: 12, color: "var(--text-muted)" }}>
               — Sent by Remind Zen on behalf of {business?.name || "your business"}
             </div>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
             {customers.filter(c => selected.includes(c.id)).map(c => (
-              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f0f6ff", borderRadius: 20, padding: "4px 12px" }}>
+              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-selected)", borderRadius: 20, padding: "4px 12px" }}>
                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#B5D4F4", fontSize: 10, fontWeight: 600, color: "#185FA5", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {c.name[0].toUpperCase()}
                 </div>
@@ -1007,10 +1007,10 @@ function SendPage({ user, business, showToast }) {
             </button>
             {showConfirm && (
               <Modal title="Confirm send" onClose={() => setShowConfirm(false)}>
-                <p style={{ fontSize: 14, color: "#444", marginBottom: 8, lineHeight: 1.7 }}>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.7 }}>
                   You're about to send <strong>{selected.length} message{selected.length > 1 ? "s" : ""}</strong> to {selected.length} customer{selected.length > 1 ? "s" : ""}.
                 </p>
-                <p style={{ fontSize: 13, color: "#888", marginBottom: 20, lineHeight: 1.7 }}>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20, lineHeight: 1.7 }}>
                   {usePreferred ? "Each customer will receive via their preferred channel." : `All messages will be sent via ${overrideChannel === "both" ? "Email + SMS" : overrideChannel.toUpperCase()}.`}
                   {" "}This will count toward your monthly message limit.
                 </p>
@@ -1063,7 +1063,7 @@ function TemplatesPage({ showToast }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {all.map(t => (
-          <div key={t.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px" }}>
+          <div key={t.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
               <div>
                 <span style={{ fontWeight: 600, fontSize: 15 }}>{t.name}</span>
@@ -1076,9 +1076,9 @@ function TemplatesPage({ showToast }) {
                 {t.id > 4 && <button onClick={() => deleteCustom(t.id)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 12px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Delete</button>}
               </div>
             </div>
-            {t.subject && <p style={{ margin: "0 0 6px", fontSize: 13, color: "#888" }}>Subject: {t.subject}</p>}
+            {t.subject && <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--text-muted)" }}>Subject: {t.subject}</p>}
             {editing === t.id && (
-              <div style={{ background: "#f9f9f9", borderRadius: 8, padding: "12px 14px", fontSize: 13, lineHeight: 1.7, color: "#444", marginTop: 8, whiteSpace: "pre-wrap" }}>
+              <div style={{ background: "var(--bg-hover)", borderRadius: 8, padding: "12px 14px", fontSize: 13, lineHeight: 1.7, color: "var(--text-secondary)", marginTop: 8, whiteSpace: "pre-wrap" }}>
                 {t.body}
               </div>
             )}
@@ -1160,25 +1160,25 @@ function HistoryPage({ user }) {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading history...</div>
+        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-hint)" }}>Loading history...</div>
       ) : history.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-hint)" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
           <p style={{ margin: 0 }}>No messages sent yet.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtered.length === 0 ? <p style={{ color: "#aaa", textAlign: "center", padding: "20px 0" }}>No results match your search.</p> : filtered.map(h => (
-            <div key={h.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          {filtered.length === 0 ? <p style={{ color: "var(--text-hint)", textAlign: "center", padding: "20px 0" }}>No results match your search.</p> : filtered.map(h => (
+            <div key={h.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 14, color: "#1a1a1a" }}>{h.customer_name}</div>
-                <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>{h.subject || h.body?.slice(0, 60) + "..."}</div>
+                <div style={{ fontWeight: 500, fontSize: 14, color: "var(--text-primary)" }}>{h.customer_name}</div>
+                <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>{h.subject || h.body?.slice(0, 60) + "..."}</div>
               </div>
               <Badge type={h.channel} label={h.channel === "both" ? "Email + SMS" : h.channel?.toUpperCase()} />
               <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: h.status === "sent" ? "#EAF3DE" : "#FCEBEB", color: h.status === "sent" ? "#3B6D11" : "#A32D2D" }} title={h.error || ""}>
                 {h.status === "failed" && h.error ? "failed — hover for details" : h.status}
               </span>
-              <div style={{ fontSize: 12, color: "#bbb", whiteSpace: "nowrap", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <div style={{ fontSize: 12, color: "var(--text-placeholder)", whiteSpace: "nowrap", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                 <span>{new Date(h.sent_at).toLocaleDateString()}</span>
                 <span style={{ fontSize: 11 }}>{new Date(h.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
               </div>
@@ -1240,7 +1240,7 @@ function DeleteAccountSection({ user }) {
 
 // ── Settings Page ──
 
-function SettingsPage({ user, business, setBusiness, showToast }) {
+function SettingsPage({ user, business, setBusiness, showToast, darkMode, setDarkMode }) {
   const [form, setForm] = useState({ name: business?.name || "", email: business?.email || "", timezone: business?.timezone || "America/Los_Angeles", notify_schedule_email: business?.notify_schedule_email || false });
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -1290,13 +1290,13 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
 
   return (
     <div style={{ maxWidth: 560, width: "100%" }}>
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 600 }}>Business information</h3>
-        <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Business name</label>
+        <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Business name</label>
         <input style={inputStyle} placeholder="Your business name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-        <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Contact email</label>
+        <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Contact email</label>
         <input style={inputStyle} placeholder="Contact email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-        <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Timezone</label>
+        <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Timezone</label>
         <select style={{ ...inputStyle, cursor: "pointer" }} value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })}>
           <option value="America/Los_Angeles">US/Pacific — Los Angeles</option>
           <option value="America/Denver">US/Mountain — Denver</option>
@@ -1312,21 +1312,32 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
           <input type="checkbox" checked={form.notify_schedule_email} onChange={e => setForm({ ...form, notify_schedule_email: e.target.checked })} style={{ width: 16, height: 16 }} />
           <div>
             <div style={{ fontSize: 14, fontWeight: 500 }}>Email me when a schedule fires</div>
-            <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Get a summary email each time an automated reminder schedule runs</div>
+            <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>Get a summary email each time an automated reminder schedule runs</div>
           </div>
         </label>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16 }} onClick={() => setDarkMode(!darkMode)}>
+          <div style={{ width: 44, height: 24, borderRadius: 99, background: darkMode ? "#185FA5" : "#ddd", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: darkMode ? 23 : 3, transition: "left 0.2s" }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{darkMode ? "🌙 Dark mode" : "☀️ Light mode"}</div>
+            <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>Switch between light and dark appearance</div>
+          </div>
+        </label>
+
         <button onClick={saveBusiness} disabled={saving} style={btnStyle(true)}>{saving ? "Saving..." : "Save changes"}</button>
 
         <div style={{ height: 1, background: "#f0f0f0", margin: "28px 0" }} />
 
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Referral program</h3>
-        <p style={{ fontSize: 13, color: "#888", marginBottom: 14, lineHeight: 1.6 }}>Share your referral link. When someone signs up using it, they get a 30-day free trial and you get 30 free days added to your subscription.</p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, lineHeight: 1.6 }}>Share your referral link. When someone signs up using it, they get a 30-day free trial and you get 30 free days added to your subscription.</p>
         <ReferralSection userId={user.id} />
       </div>
 
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>Account</h3>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Signed in as {user.email}</p>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-hint)" }}>Signed in as {user.email}</p>
         {!changingPassword ? (
           <button onClick={() => setChangingPassword(true)} style={btnStyle(false)}>Change password</button>
         ) : (
@@ -1344,9 +1355,9 @@ function SettingsPage({ user, business, setBusiness, showToast }) {
 
       <TagLibrarySection user={user} showToast={showToast} />
 
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#A32D2D" }}>Sign out</h3>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>You'll need to sign back in to access your account.</p>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-hint)" }}>You'll need to sign back in to access your account.</p>
         <button onClick={handleSignOut} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>Sign out</button>
       </div>
     </div>
@@ -1383,9 +1394,9 @@ function TagLibrarySection({ user, showToast }) {
   };
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
       <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>Tag library</h3>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Define preset tags your team can pick from. Custom tags can still be added on the fly when editing customers.</p>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-hint)" }}>Define preset tags your team can pick from. Custom tags can still be added on the fly when editing customers.</p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
         {tags.length === 0 && <span style={{ fontSize: 13, color: "#ccc" }}>No preset tags yet</span>}
         {tags.map(tag => (
@@ -1443,7 +1454,7 @@ function AccountDeletionSection({ user, showToast }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #f7c1c1", borderRadius: 12, padding: "24px 28px", marginBottom: 20 }}>
       <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600, color: "#A32D2D" }}>Delete account</h3>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#aaa" }}>Permanently delete your account and all associated data including customers, schedules, and send history. Your subscription will be cancelled automatically. This cannot be undone.</p>
+      <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-hint)" }}>Permanently delete your account and all associated data including customers, schedules, and send history. Your subscription will be cancelled automatically. This cannot be undone.</p>
       {step === "idle" && (
         <button onClick={() => setStep("confirm")} style={{ ...btnStyle(false), color: "#A32D2D", borderColor: "#f7c1c1" }}>Delete my account</button>
       )}
@@ -1498,7 +1509,7 @@ function FeedbackPage({ user, business, showToast }) {
       <div style={{ maxWidth: 560, textAlign: "center", padding: "60px 0" }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>🙏</div>
         <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>Thank you for your feedback!</h2>
-        <p style={{ color: "#aaa", fontSize: 14, margin: "0 0 24px" }}>We review every submission and use it to improve Remind Zen.</p>
+        <p style={{ color: "var(--text-hint)", fontSize: 14, margin: "0 0 24px" }}>We review every submission and use it to improve Remind Zen.</p>
         <button onClick={() => { setSubmitted(false); setForm({ type: "bug", subject: "", message: "" }); }} style={btnStyle(false)}>Submit another</button>
       </div>
     );
@@ -1513,10 +1524,10 @@ function FeedbackPage({ user, business, showToast }) {
           </button>
         ))}
       </div>
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "24px 28px" }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "24px 28px" }}>
         <input style={inputStyle} placeholder="Subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
         <textarea style={{ ...inputStyle, minHeight: 140, resize: "vertical" }} placeholder={form.type === "bug" ? "Describe the bug — what happened, and what did you expect to happen?" : form.type === "feature" ? "Describe the feature you'd like to see and why it would be helpful." : "What's on your mind?"} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} />
-        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Submitting as {user.email} · {business?.name}</div>
+        <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 16 }}>Submitting as {user.email} · {business?.name}</div>
         <button onClick={handleSubmit} disabled={submitting || !form.subject.trim() || !form.message.trim()} style={{ ...btnStyle(true), opacity: (!form.subject.trim() || !form.message.trim()) ? 0.4 : 1 }}>
           {submitting ? "Submitting..." : "Submit feedback"}
         </button>
@@ -1606,17 +1617,17 @@ function AdminPage() {
         ))}
       </div>
 
-      {loading ? <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading...</div> : null}
+      {loading ? <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-hint)" }}>Loading...</div> : null}
 
       {!loading && tab === "businesses" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {businesses.map(b => (
-            <div key={b.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, opacity: b.suspended ? 0.6 : 1 }}>
+            <div key={b.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, opacity: b.suspended ? 0.6 : 1 }}>
               <Avatar name={b.name || b.email} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{b.name || "(no name)"}</div>
-                <div style={{ fontSize: 13, color: "#888" }}>{b.email}</div>
-                <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Joined {new Date(b.created_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{b.email}</div>
+                <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>Joined {new Date(b.created_at).toLocaleDateString()}</div>
               </div>
               {b.suspended && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#A32D2D", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>Suspended</span>}
               <button onClick={() => toggleSuspend(b)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 14px", color: b.suspended ? "#3B6D11" : "#A32D2D", borderColor: b.suspended ? "#C0DD97" : "#f7c1c1" }}>
@@ -1629,19 +1640,19 @@ function AdminPage() {
 
       {!loading && tab === "invites" && (
         <div>
-          <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+          <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
             <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600 }}>Create new invite code</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 12 }}>
               <div>
-                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Code *</label>
+                <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Code *</label>
                 <input style={{ ...inputStyle, marginBottom: 0, textTransform: "uppercase" }} placeholder="e.g. EARLY2024" value={newCode.code} onChange={e => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })} />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Trial days</label>
+                <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Trial days</label>
                 <input style={{ ...inputStyle, marginBottom: 0 }} type="number" min="1" max="365" value={newCode.trial_days} onChange={e => setNewCode({ ...newCode, trial_days: e.target.value })} />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Lock to plan</label>
+                <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Lock to plan</label>
                 <select style={{ ...inputStyle, marginBottom: 0, cursor: "pointer" }} value={newCode.locked_plan} onChange={e => setNewCode({ ...newCode, locked_plan: e.target.value })}>
                   <option value="">No lock (free choice)</option>
                   <option value="starter">Starter</option>
@@ -1650,11 +1661,11 @@ function AdminPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Max uses</label>
+                <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Max uses</label>
                 <input style={{ ...inputStyle, marginBottom: 0 }} type="number" min="1" placeholder="Unlimited" value={newCode.max_uses} onChange={e => setNewCode({ ...newCode, max_uses: e.target.value })} />
               </div>
               <div style={{ gridColumn: "span 2" }}>
-                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Note (internal only)</label>
+                <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Note (internal only)</label>
                 <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="e.g. Early adopter batch 1" value={newCode.note} onChange={e => setNewCode({ ...newCode, note: e.target.value })} />
               </div>
             </div>
@@ -1664,18 +1675,18 @@ function AdminPage() {
           </div>
 
           {inviteCodes.length === 0 ? (
-            <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No invite codes yet.</p>
+            <p style={{ color: "var(--text-hint)", textAlign: "center", padding: "40px 0" }}>No invite codes yet.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {inviteCodes.map(c => (
-                <div key={c.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, opacity: c.active ? 1 : 0.6 }}>
+                <div key={c.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, opacity: c.active ? 1 : 0.6 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                       <span style={{ fontWeight: 700, fontSize: 15, fontFamily: "monospace", color: "#185FA5" }}>{c.code}</span>
                       <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: c.active ? "#EAF3DE" : "#F1EFE8", color: c.active ? "#3B6D11" : "#5F5E5A" }}>{c.active ? "Active" : "Inactive"}</span>
                       {c.locked_plan && <span style={{ fontSize: 11, background: "#EEEDFE", color: "#3C3489", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{c.locked_plan}</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: "#aaa", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-hint)", display: "flex", gap: 16, flexWrap: "wrap" }}>
                       <span>🗓 {c.trial_days} day trial</span>
                       <span>👥 {c.uses_count || 0}{c.max_uses ? `/${c.max_uses}` : ""} uses</span>
                       {c.note && <span>📝 {c.note}</span>}
@@ -1694,7 +1705,7 @@ function AdminPage() {
 
       {!loading && tab === "feedback" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {feedback.length === 0 && <p style={{ color: "#aaa", textAlign: "center", padding: "40px 0" }}>No feedback yet.</p>}
+          {feedback.length === 0 && <p style={{ color: "var(--text-hint)", textAlign: "center", padding: "40px 0" }}>No feedback yet.</p>}
           {feedback.map(f => (
             <div key={f.id} style={{ background: f.read ? "#fff" : "#f0f6ff", border: `1px solid ${f.read ? "#f0f0f0" : "#b5d4f4"}`, borderRadius: 12, padding: "16px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -1704,11 +1715,11 @@ function AdminPage() {
                   <span style={{ marginLeft: 8, fontSize: 11, background: f.type?.includes("bug") ? "#FCEBEB" : f.type?.includes("feature") ? "#EEEDFE" : "#F1EFE8", color: f.type?.includes("bug") ? "#A32D2D" : f.type?.includes("feature") ? "#3C3489" : "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{f.type?.replace("pro_priority_", "")}</span>
                   {!f.read && <span style={{ marginLeft: 8, fontSize: 11, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>New</span>}
                 </div>
-                <div style={{ fontSize: 12, color: "#aaa" }}>{new Date(f.created_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: 12, color: "var(--text-hint)" }}>{new Date(f.created_at).toLocaleDateString()}</div>
               </div>
-              <div style={{ fontSize: 13, color: "#444", marginBottom: 8, lineHeight: 1.6 }}>{f.message}</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.6 }}>{f.message}</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: "#aaa" }}>{f.business_name} · {f.email}</div>
+                <div style={{ fontSize: 12, color: "var(--text-hint)" }}>{f.business_name} · {f.email}</div>
                 {!f.read && <button onClick={() => markRead(f)} style={{ ...btnStyle(false), fontSize: 12, padding: "4px 12px" }}>Mark as read</button>}
               </div>
             </div>
@@ -1718,6 +1729,9 @@ function AdminPage() {
     </div>
   );
 }
+
+// ── Starter Tags ──
+const STARTER_TAGS = ["VIP", "New customer", "Inactive", "Appointment", "Monthly service", "Follow-up needed"];
 
 // ── Onboarding Wizard ──
 
@@ -1753,21 +1767,21 @@ function OnboardingWizard({ user, onComplete }) {
         {step === 1 && (
           <div style={{ textAlign: "center" }}>
             <img src={logo} alt="Remind Zen" style={{ width: 80, marginBottom: 16 }} />
-            <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>Welcome to Remind Zen!</h2>
-            <p style={{ color: "#888", fontSize: 14, margin: "0 0 32px", lineHeight: 1.7 }}>Let's get you set up in 3 quick steps. It only takes a minute.</p>
+            <h2 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 700, color: "var(--text-primary)" }}>Welcome to Remind Zen!</h2>
+            <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 32px", lineHeight: 1.7 }}>Let's get you set up in 3 quick steps. It only takes a minute.</p>
             <button onClick={() => setStep(2)} style={{ ...btnStyle(true), width: "100%", marginBottom: 12 }}>Get started →</button>
-            <button onClick={skipToApp} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 13 }}>Skip and go to the app</button>
+            <button onClick={skipToApp} style={{ background: "none", border: "none", color: "var(--text-hint)", cursor: "pointer", fontSize: 13 }}>Skip and go to the app</button>
           </div>
         )}
 
         {step === 2 && (
           <div>
             <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700 }}>Add your first customer</h2>
-            <p style={{ color: "#aaa", fontSize: 13, margin: "0 0 20px" }}>You can add more later — just start with one to try it out.</p>
+            <p style={{ color: "var(--text-hint)", fontSize: 13, margin: "0 0 20px" }}>You can add more later — just start with one to try it out.</p>
             <input style={inputStyle} placeholder="Full name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <input style={inputStyle} placeholder="Email address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
             <input style={inputStyle} placeholder="Phone number (+1XXXXXXXXXX)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-            <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Preferred channel</label>
+            <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Preferred channel</label>
             <select style={{ ...inputStyle, cursor: "pointer" }} value={form.preferred_channel} onChange={e => setForm({ ...form, preferred_channel: e.target.value })}>
               <option value="email">Email</option>
               <option value="sms">SMS</option>
@@ -1786,8 +1800,13 @@ function OnboardingWizard({ user, onComplete }) {
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
             <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>You're all set!</h2>
-            <p style={{ color: "#888", fontSize: 14, margin: "0 0 8px", lineHeight: 1.7 }}>Your first customer has been added. Head to <strong>Send Reminder</strong> to send your first message, or set up a <strong>Schedule</strong> for automatic recurring reminders.</p>
-            <p style={{ color: "#aaa", fontSize: 13, margin: "0 0 28px" }}>You can always add more customers, templates, and schedules from the main nav.</p>
+            <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px", lineHeight: 1.7 }}>Your first customer has been added. We've also added some starter tags to help you organize customers:</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 16 }}>
+              {STARTER_TAGS.map(tag => (
+                <span key={tag} style={{ background: "#EEEDFE", color: "#3C3489", fontSize: 12, padding: "3px 10px", borderRadius: 99, fontWeight: 500 }}>{tag}</span>
+              ))}
+            </div>
+            <p style={{ color: "var(--text-hint)", fontSize: 13, margin: "0 0 24px" }}>Head to <strong>Send Reminder</strong> to send your first message, or set up a <strong>Schedule</strong> for automatic reminders.</p>
             <button onClick={skipToApp} style={{ ...btnStyle(true), width: "100%" }}>Go to the app →</button>
           </div>
         )}
@@ -1907,27 +1926,27 @@ function SchedulesPage({ user, showToast }) {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>Loading...</div>
+        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-hint)" }}>Loading...</div>
       ) : schedules.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-hint)" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🗓</div>
           <p style={{ margin: 0 }}>No schedules yet. Create one to start sending reminders automatically.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {schedules.map(s => (
-            <div key={s.id} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px", opacity: s.active ? 1 : 0.6 }}>
+            <div key={s.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", opacity: s.active ? 1 : 0.6 }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>{s.name}</span>
+                    <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text-primary)" }}>{s.name}</span>
                     <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: s.active ? "#EAF3DE" : "#F1EFE8", color: s.active ? "#3B6D11" : "#5F5E5A" }}>
                       {s.active ? "Active" : "Paused"}
                     </span>
                     {s.tag_filter && <span style={{ fontSize: 11, background: "#EEEDFE", color: "#3C3489", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{s.tag_filter}</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>{cadenceLabel(s)}</div>
-                  <div style={{ fontSize: 12, color: "#aaa" }}>{s.subject || s.body?.slice(0, 60) + "..."}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 4 }}>{cadenceLabel(s)}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-hint)" }}>{s.subject || s.body?.slice(0, 60) + "..."}</div>
                   {s.active && <div style={{ fontSize: 12, color: "#185FA5", marginTop: 6 }}>Next run: {getNextRun(s).toLocaleDateString()} at {s.send_time}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
@@ -1944,13 +1963,13 @@ function SchedulesPage({ user, showToast }) {
         <Modal title="New Schedule" onClose={() => setShowModal(false)}>
           <input style={inputStyle} placeholder="Schedule name (e.g. Monthly lawn reminder) *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
 
-          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Send to</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send to</label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.tag_filter} onChange={e => setForm({ ...form, tag_filter: e.target.value })}>
             <option value="">All customers</option>
             {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
           </select>
 
-          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Cadence</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Cadence</label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.cadence} onChange={e => setForm({ ...form, cadence: e.target.value })}>
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -1972,10 +1991,10 @@ function SchedulesPage({ user, showToast }) {
             </select>
           )}
 
-          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Send time</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send time</label>
           <input style={inputStyle} type="time" value={form.send_time} onChange={e => setForm({ ...form, send_time: e.target.value })} />
 
-          <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 6 }}>Channel</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Channel</label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })}>
             <option value="preferred">Each customer's preferred channel</option>
             <option value="email">Email only</option>
@@ -2088,7 +2107,7 @@ function BillingPage({ user, business }) {
     { key: "pro", name: "Pro", monthlyPrice: 59, annualPrice: 590, features: ["Unlimited customers", "2,000 messages/month", "Everything in Growth", "Priority support", "Calendar integration*", "Two-way SMS*", "14-day free trial"] },
   ];
 
-  if (loading) return <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>Loading billing info...</div>;
+  if (loading) return <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-hint)" }}>Loading billing info...</div>;
 
   const planInfo = PLAN_DETAILS[status?.plan || "trial"];
   const usagePct = status ? Math.min(100, Math.round((status.messagesUsed / status.messageLimit) * 100)) : 0;
@@ -2120,10 +2139,10 @@ function BillingPage({ user, business }) {
 
       {/* Current plan + usage */}
       {isSubscribed && (
-        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "20px 24px", marginBottom: 28 }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "20px 24px", marginBottom: 28 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
             <div>
-              <div style={{ fontSize: 13, color: "#aaa", marginBottom: 4 }}>Current plan</div>
+              <div style={{ fontSize: 13, color: "var(--text-hint)", marginBottom: 4 }}>Current plan</div>
               <span style={{ background: planInfo.bg, color: planInfo.color, fontWeight: 600, fontSize: 15, padding: "4px 14px", borderRadius: 99 }}>{planInfo.name}</span>
             </div>
             <button onClick={handleManageBilling} disabled={redirecting} style={btnStyle(false)}>
@@ -2131,7 +2150,7 @@ function BillingPage({ user, business }) {
             </button>
           </div>
           <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <span style={{ color: "#888" }}>Messages this month</span>
+            <span style={{ color: "var(--text-muted)" }}>Messages this month</span>
             <span style={{ fontWeight: 500, color: usagePct > 90 ? "#A32D2D" : "#1a1a1a" }}>{status.messagesUsed} / {status.messageLimit}</span>
           </div>
           <div style={{ height: 8, background: "#f0f0f0", borderRadius: 99 }}>
@@ -2163,13 +2182,13 @@ function BillingPage({ user, business }) {
               {plan.popular && <div style={{ fontSize: 11, fontWeight: 600, color: "#185FA5", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Most popular</div>}
               <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{plan.name}</div>
               <div style={{ marginBottom: 16 }}>
-                <span style={{ fontSize: 30, fontWeight: 700, color: "#1a1a1a" }}>${price}</span>
-                <span style={{ fontSize: 13, color: "#aaa" }}>{period}</span>
+                <span style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>${price}</span>
+                <span style={{ fontSize: 13, color: "var(--text-hint)" }}>{period}</span>
                 {annual && <div style={{ fontSize: 11, color: "#3B6D11", marginTop: 2 }}>${plan.monthlyPrice}/mo billed annually</div>}
               </div>
               <div style={{ flex: 1, marginBottom: 20 }}>
                 {plan.features.map(f => (
-                  <div key={f} style={{ display: "flex", gap: 8, fontSize: 13, color: "#555", padding: "4px 0" }}>
+                  <div key={f} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text-secondary)", padding: "4px 0" }}>
                     <span style={{ color: "#185FA5", flexShrink: 0 }}>✓</span>{f}
                   </div>
                 ))}
@@ -2186,7 +2205,7 @@ function BillingPage({ user, business }) {
         })}
       </div>
 
-      <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", lineHeight: 1.8 }}>
+      <div style={{ fontSize: 12, color: "var(--text-hint)", textAlign: "center", lineHeight: 1.8 }}>
         All plans include a 14-day free trial · No credit card required to start<br />
         Overages: $0.01/email · $0.05/SMS above plan limit · Cancel anytime<br />
         * Feature coming soon
@@ -2242,12 +2261,12 @@ function ReferralSection({ userId }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <input readOnly value={referralLink} style={{ ...inputStyle, marginBottom: 0, flex: 1, fontSize: 13, color: "#555", background: "#f9f9f9" }} />
+        <input readOnly value={referralLink} style={{ ...inputStyle, marginBottom: 0, flex: 1, fontSize: 13, color: "var(--text-secondary)", background: "var(--bg-hover)" }} />
         <button onClick={copyLink} style={{ ...btnStyle(copied ? true : false), flexShrink: 0, minWidth: 80 }}>
           {copied ? "✓ Copied!" : "Copy"}
         </button>
       </div>
-      <div style={{ fontSize: 13, color: "#888" }}>
+      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
         {referralCount > 0
           ? `🎉 ${referralCount} business${referralCount !== 1 ? "es" : ""} signed up using your link — ${referralCount * 30} free days earned!`
           : "No referrals yet — share your link to start earning free days!"}
@@ -2261,9 +2280,9 @@ function ReferralSection({ userId }) {
 function ContactPage() {
   return (
     <div style={{ maxWidth: 600 }}>
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 600 }}>Get in touch</h3>
-        <p style={{ margin: "0 0 20px", fontSize: 14, color: "#888", lineHeight: 1.7 }}>
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7 }}>
           Have a question, found a bug, or need help with your account? We're here to help.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -2272,20 +2291,20 @@ function ContactPage() {
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>Email support</div>
               <a href="mailto:remindzenco@gmail.com" style={{ fontSize: 13, color: "#185FA5" }}>remindzenco@gmail.com</a>
-              <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>We typically respond within 1 business day</div>
+              <div style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 2 }}>We typically respond within 1 business day</div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EEEDFE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>💬</div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>In-app feedback</div>
-              <div style={{ fontSize: 13, color: "#888" }}>Use the "Send feedback" button at the top of any page to submit bug reports or feature requests directly.</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Use the "Send feedback" button at the top of any page to submit bug reports or feature requests directly.</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "28px 32px", marginBottom: 16 }}>
         <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 600 }}>Common questions</h3>
         {[
           ["Why didn't my SMS send?", "Make sure the phone number is in +1XXXXXXXXXX format. Also check that the customer has not opted out — opted-out customers are automatically skipped. If the issue persists, contact us and we'll look into it."],
@@ -2293,15 +2312,15 @@ function ContactPage() {
           ["How do I import my customers?", "Go to the Customers tab and click 'Import CSV'. Your CSV should have columns named: name, email, phone, notes, preferred_channel."],
           ["How do I cancel my account?", "Go to Settings → Delete account. This permanently removes all your data. If you need help, email us first."],
         ].map(([q, a]) => (
-          <details key={q} style={{ marginBottom: 12, borderBottom: "1px solid #f0f0f0", paddingBottom: 12 }}>
-            <summary style={{ fontSize: 14, fontWeight: 500, cursor: "pointer", color: "#1a1a1a" }}>{q}</summary>
-            <p style={{ margin: "8px 0 0", fontSize: 13, color: "#888", lineHeight: 1.7 }}>{a}</p>
+          <details key={q} style={{ marginBottom: 12, borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+            <summary style={{ fontSize: 14, fontWeight: 500, cursor: "pointer", color: "var(--text-primary)" }}>{q}</summary>
+            <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.7 }}>{a}</p>
           </details>
         ))}
       </div>
 
-      <div style={{ background: "#f9f9f9", borderRadius: 12, padding: "20px 24px", fontSize: 13, color: "#aaa", lineHeight: 1.7 }}>
-        <strong style={{ color: "#888" }}>Remind Zen LLC</strong> · Ventura, CA · <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>
+      <div style={{ background: "var(--bg-hover)", borderRadius: 12, padding: "20px 24px", fontSize: 13, color: "var(--text-hint)", lineHeight: 1.7 }}>
+        <strong style={{ color: "var(--text-muted)" }}>Remind Zen LLC</strong> · Ventura, CA · <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>
       </div>
     </div>
   );
@@ -2324,67 +2343,67 @@ function LegalPage() {
       </div>
 
       {tab === "terms" && (
-        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "32px 36px", lineHeight: 1.8, fontSize: 14, color: "#333" }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Terms of Service</h2>
-          <p style={{ margin: "0 0 24px", color: "#aaa", fontSize: 13 }}>Last updated: {today}</p>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "32px 36px", lineHeight: 1.8, fontSize: 14, color: "#333" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Terms of Service</h2>
+          <p style={{ margin: "0 0 24px", color: "var(--text-hint)", fontSize: 13 }}>Last updated: {today}</p>
 
           <p>These Terms of Service ("Terms") govern your use of the Remind Zen platform ("Service") operated by Remind Zen LLC ("us", "we", or "our"). By accessing or using our Service, you agree to be bound by these Terms.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>1. Use of the Service</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>1. Use of the Service</h3>
           <p>Remind Zen provides a customer reminder platform that allows businesses to send email and SMS messages to their customers. You are responsible for all activity that occurs under your account. You must not use the Service for any unlawful purpose or in violation of any regulations, including but not limited to the CAN-SPAM Act and the Telephone Consumer Protection Act (TCPA).</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>2. Customer consent</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>2. Customer consent</h3>
           <p>You are solely responsible for ensuring that your customers have given proper consent to receive communications from you before sending them messages through our Service. You must maintain records of customer consent and provide opt-out mechanisms in all communications. We reserve the right to suspend accounts that violate consent requirements.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>3. Prohibited content</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>3. Prohibited content</h3>
           <p>You may not use the Service to send spam, unsolicited messages, misleading content, illegal content, or any messages that violate the rights of third parties. We reserve the right to remove content and suspend accounts that violate these policies without notice.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>4. Account responsibility</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>4. Account responsibility</h3>
           <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorized use of your account. We are not liable for any loss or damage arising from your failure to protect your account information.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>5. Service availability</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>5. Service availability</h3>
           <p>We strive to maintain reliable service but do not guarantee uninterrupted or error-free operation. We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>6. Limitation of liability</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>6. Limitation of liability</h3>
           <p>To the maximum extent permitted by law, Remind Zen LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service. Our total liability to you shall not exceed the amounts paid by you to us in the three months preceding the claim.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>7. Changes to terms</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>7. Changes to terms</h3>
           <p>We reserve the right to update these Terms at any time. We will notify you of significant changes by email or by posting a notice within the Service. Your continued use of the Service after changes constitutes your acceptance of the new Terms.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>8. Contact</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Contact</h3>
           <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a>.</p>
         </div>
       )}
 
       {tab === "privacy" && (
-        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "32px 36px", lineHeight: 1.8, fontSize: 14, color: "#333" }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Privacy Policy</h2>
-          <p style={{ margin: "0 0 24px", color: "#aaa", fontSize: 13 }}>Last updated: {today}</p>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "32px 36px", lineHeight: 1.8, fontSize: 14, color: "#333" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Privacy Policy</h2>
+          <p style={{ margin: "0 0 24px", color: "var(--text-hint)", fontSize: 13 }}>Last updated: {today}</p>
 
           <p>Remind Zen LLC ("we", "us", or "our") operates the Remind Zen platform. This Privacy Policy explains how we collect, use, and protect information when you use our Service.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>1. Information we collect</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>1. Information we collect</h3>
           <p>We collect information you provide directly to us, including your business name, email address, and password when you create an account. We also store customer contact information (names, email addresses, phone numbers) that you enter into the platform on behalf of your business.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>2. How we use your information</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>2. How we use your information</h3>
           <p>We use the information we collect to provide and operate the Service, send messages on your behalf to your customers, maintain send history and analytics, and communicate with you about your account. We do not sell your data or your customers' data to third parties.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>3. Customer data</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>3. Customer data</h3>
           <p>You retain ownership of all customer data you upload to the Service. We process this data solely on your behalf and in accordance with your instructions. You are responsible for ensuring you have proper authorization to store and use your customers' contact information.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>4. Data storage & security</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>4. Data storage & security</h3>
           <p>Your data is stored securely using Supabase, a SOC 2 compliant database provider. We implement industry-standard security measures including encryption in transit and at rest. However, no method of transmission over the Internet is 100% secure.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>5. Third-party services</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>5. Third-party services</h3>
           <p>We use SendGrid to deliver email messages and Twilio to deliver SMS messages on your behalf. These providers may process recipient email addresses and phone numbers as part of message delivery. Please review their respective privacy policies for details.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>6. Data retention</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>6. Data retention</h3>
           <p>We retain your account data for as long as your account is active. You may delete your account and associated data at any time by contacting us. Send history is retained for 12 months for compliance and support purposes.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>7. Your rights</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>7. Your rights</h3>
           <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at the address below. California residents may have additional rights under the CCPA.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>8. Contact</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Contact</h3>
           <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:remindzenco@gmail.com" style={{ color: "#185FA5" }}>remindzenco@gmail.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
         </div>
       )}
@@ -2409,7 +2428,7 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
   const isSecondary = secondaryNav.includes(page);
 
   return (
-    <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: isMobile ? "0 16px" : "0 24px", position: "relative" }}>
+    <div style={{ background: "var(--nav-bg)", borderBottom: "1px solid var(--nav-border)", padding: isMobile ? "0 16px" : "0 24px", position: "relative" }}>
       <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 56, gap: isMobile ? 8 : 16 }}>
 
         {/* Logo */}
@@ -2433,7 +2452,7 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
 
           {/* Usage meter — desktop only */}
           {!isMobile && billingStatus && (
-            <button onClick={() => setPage("Billing")} title="Message usage this month" style={{ background: "none", border: "1px solid #f0f0f0", cursor: "pointer", padding: "4px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setPage("Billing")} title="Message usage this month" style={{ background: "none", border: "1px solid var(--border)", cursor: "pointer", padding: "4px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                 <span style={{ fontSize: 11, color: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#A32D2D" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#854F0B" : "#555", whiteSpace: "nowrap", fontWeight: 500 }}>
                   {billingStatus.messagesUsed}/{billingStatus.messageLimit} msgs
@@ -2447,8 +2466,13 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
 
           {/* Business name — desktop only */}
           {!isMobile && (
-            <div style={{ fontSize: 11, color: "#bbb", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || ""}</div>
+            <div style={{ fontSize: 11, color: "var(--text-placeholder)", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || ""}</div>
           )}
+
+          {/* Dark mode toggle */}
+          <button onClick={() => setDarkMode && setDarkMode(!darkMode)} title={darkMode ? "Switch to light mode" : "Switch to dark mode"} style={{ background: "none", border: "1px solid var(--border)", cursor: "pointer", borderRadius: 8, padding: "6px 8px", fontSize: 14, color: "var(--text-secondary)", display: "flex", alignItems: "center" }}>
+            {darkMode ? "☀️" : "🌙"}
+          </button>
 
           {/* Hamburger — always visible, shows secondary nav on desktop, all nav on mobile */}
           <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: isSecondary ? "#f0f6ff" : "none", border: isSecondary ? "1px solid #b5d4f4" : "1px solid #f0f0f0", cursor: "pointer", borderRadius: 8, padding: "6px 10px", fontSize: 16, color: isSecondary ? "#185FA5" : "#555", display: "flex", alignItems: "center", gap: 6 }}>
@@ -2460,7 +2484,7 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
 
       {/* Dropdown menu */}
       {menuOpen && (
-        <div style={{ position: "absolute", top: 56, right: 0, background: "#fff", border: "1px solid #f0f0f0", borderRadius: "0 0 12px 12px", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 200, minWidth: 200, overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 56, right: 0, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "0 0 12px 12px", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 200, minWidth: 200, overflow: "hidden" }}>
           {/* On mobile show primary nav too */}
           {isMobile && (
             <>
@@ -2482,10 +2506,10 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
 
           {/* Usage meter on mobile */}
           {isMobile && billingStatus && (
-            <div style={{ padding: "12px 20px", borderTop: "1px solid #f0f0f0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#888", marginBottom: 6 }}>
+            <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>
                 <span>Messages this month</span>
-                <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{billingStatus.messagesUsed}/{billingStatus.messageLimit}</span>
+                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{billingStatus.messagesUsed}/{billingStatus.messageLimit}</span>
               </div>
               <div style={{ height: 4, background: "#f0f0f0", borderRadius: 99 }}>
                 <div style={{ height: 4, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%` }} />
@@ -2495,7 +2519,7 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
 
           {/* Business name on mobile */}
           {isMobile && (
-            <div style={{ padding: "10px 20px", fontSize: 12, color: "#bbb", borderTop: "1px solid #f5f5f5" }}>{business?.name || user?.email}</div>
+            <div style={{ padding: "10px 20px", fontSize: 12, color: "var(--text-placeholder)", borderTop: "1px solid #f5f5f5" }}>{business?.name || user?.email}</div>
           )}
         </div>
       )}
@@ -2515,6 +2539,16 @@ export default function App() {
   const [page, setPage] = useState("Dashboard");
   const [toast, setToast] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    if (saved !== null) return saved === "true";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+    localStorage.setItem("darkMode", darkMode);
+  }, [darkMode]);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -2572,7 +2606,7 @@ export default function App() {
   if (authLoading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7f8fa" }}>
-        <div style={{ fontSize: 14, color: "#aaa" }}>Loading...</div>
+        <div style={{ fontSize: 14, color: "var(--text-hint)" }}>Loading...</div>
       </div>
     );
   }
@@ -2597,10 +2631,10 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", minHeight: "100vh", background: "#f7f8fa" }}>
+    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", minHeight: "100vh", background: "var(--bg-page)", color: "var(--text-primary)" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 
-      <AppHeader page={page} setPage={setPage} user={user} business={business} billingStatus={billingStatus} />
+      <AppHeader page={page} setPage={setPage} user={user} business={business} billingStatus={billingStatus} darkMode={darkMode} setDarkMode={setDarkMode} />
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
         {billingStatus?.trialActive && billingStatus?.trialDaysLeft <= 3 && page !== "Billing" && (
@@ -2615,8 +2649,8 @@ export default function App() {
             <button onClick={() => setPage("Billing")} style={{ ...btnStyle(true), fontSize: 12, padding: "5px 14px", background: "#A32D2D" }}>Resubscribe →</button>
           </div>
         )}
-        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "#1a1a1a" }}>{pageTitles[page]?.[0]}</h1>
-        <p style={{ margin: "0 0 28px", color: "#aaa", fontSize: 14 }}>{pageTitles[page]?.[1]}</p>
+        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "var(--text-primary)" }}>{pageTitles[page]?.[0]}</h1>
+        <p style={{ margin: "0 0 28px", color: "var(--text-hint)", fontSize: 14 }}>{pageTitles[page]?.[1]}</p>
 
         {page === "Dashboard" && <DashboardPage user={user} business={business} billingStatus={billingStatus} setPage={setPage} />}
         {page === "Customers" && <CustomersPage user={user} showToast={showToast} />}
@@ -2625,7 +2659,7 @@ export default function App() {
         {page === "History" && <HistoryPage user={user} />}
         {page === "Billing" && <BillingPage user={user} business={business} />}
         {page === "Schedules" && <SchedulesPage user={user} showToast={showToast} />}
-        {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} />}
+        {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} darkMode={darkMode} setDarkMode={setDarkMode} />}
         {page === "Legal" && <LegalPage />}
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
         {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
