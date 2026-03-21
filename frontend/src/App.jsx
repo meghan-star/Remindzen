@@ -2665,7 +2665,7 @@ export default function App() {
         {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
         {page === "Admin" && user?.id === ADMIN_UID && <AdminPage />}
         {page === "Contact" && <ContactPage />}
-        {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
+        
       </div>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
