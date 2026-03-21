@@ -2414,7 +2414,7 @@ function LegalPage() {
 
 // ── App Header ──
 
-function AppHeader({ page, setPage, user, business, billingStatus }) {
+function AppHeader({ page, setPage, user, business, billingStatus, darkMode, setDarkMode }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = user?.id === ADMIN_UID;
