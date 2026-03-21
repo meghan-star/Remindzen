@@ -7,14 +7,20 @@ const ADMIN_EMAIL = "remindzenco@gmail.com";
 const ADMIN_UID = "2bd0487e-a317-4cbd-9871-70d87aacaf47";
 
 const TEMPLATES = [
-  { id: 1, name: "Appointment Reminder", channel: "both", subject: "Reminder: Your appointment tomorrow", body: "Hi {name}, this is a reminder that you have an appointment scheduled for {date} at {time}. Please reply to confirm or call us to reschedule. See you soon!" },
-  { id: 2, name: "Monthly Service Due", channel: "both", subject: "Time to schedule your monthly service", body: "Hi {name}, your monthly service is due! Give us a call or reply to this message to schedule at your convenience. We appreciate your business!" },
-  { id: 3, name: "Follow-up Thank You", channel: "email", subject: "Thanks for your visit!", body: "Hi {name}, thank you for visiting us on {date}. We hope everything was to your satisfaction. We look forward to seeing you again soon!" },
-  { id: 4, name: "Payment Due", channel: "sms", body: "Hi {name}, a friendly reminder that your payment of {amount} is due on {date}. Please contact us with any questions." },
+  { id: 1, name: "Appointment Reminder", channel: "both", subject: "Reminder: Your appointment with {business_name}", body: "Hi {name}, this is a friendly reminder that you have an appointment with {business_name} on {date} at {time}. Please reply to confirm or call us to reschedule. See you soon!" },
+  { id: 2, name: "Monthly Service Due", channel: "both", subject: "Time to schedule your service — {business_name}", body: "Hi {name}, your monthly service with {business_name} is coming up! Give us a call or reply to this message to schedule at your convenience. We appreciate your business!" },
+  { id: 3, name: "Follow-up Thank You", channel: "email", subject: "Thanks for choosing {business_name}!", body: "Hi {name}, thank you for visiting {business_name} on {date}. We hope everything was to your satisfaction. We'd love to see you again — feel free to reach out anytime!" },
+  { id: 4, name: "Payment Reminder", channel: "both", subject: "Payment reminder from {business_name}", body: "Hi {name}, this is a friendly reminder that your payment of {amount} is due on {date}. Please contact {business_name} with any questions. Thank you!" },
+  { id: 5, name: "Service Follow-up", channel: "email", subject: "How did we do? — {business_name}", body: "Hi {name}, we hope you were happy with your recent service from {business_name}! Your satisfaction means everything to us. If you have any feedback or questions, please don't hesitate to reach out. We look forward to serving you again!" },
+  { id: 6, name: "Review Request", channel: "email", subject: "We'd love your feedback — {business_name}", body: "Hi {name}, thank you for being a valued customer of {business_name}! If you've been happy with our service, we'd really appreciate a quick review. It helps other small businesses find us. Thank you so much for your support!" },
+  { id: 7, name: "Seasonal Promotion", channel: "both", subject: "Special offer for you from {business_name}", body: "Hi {name}, as one of our valued customers, we wanted to share a special offer just for you! Contact {business_name} today to learn more. We appreciate your loyalty!" },
+  { id: 8, name: "Re-engagement", channel: "both", subject: "We miss you! — {business_name}", body: "Hi {name}, it's been a while since we've seen you at {business_name}! We'd love to have you back. Get in touch to schedule your next appointment — we have some great availability coming up." },
+  { id: 9, name: "Appointment Confirmation", channel: "both", subject: "Your appointment is confirmed — {business_name}", body: "Hi {name}, your appointment with {business_name} on {date} at {time} is confirmed. If you need to reschedule, please contact us as soon as possible. See you then!" },
+  { id: 10, name: "No-show Follow-up", channel: "sms", body: "Hi {name}, we missed you today at {business_name}! We'd love to reschedule your appointment at a time that works better for you. Just reply or give us a call." },
 ];
 
-const NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact"];
-const ADMIN_NAV = ["Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact", "Admin"];
+const NAV = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact"];
+const ADMIN_NAV = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact", "Admin"];
 
 // ── Shared UI ──
 
@@ -250,6 +256,170 @@ function AuthScreen({ onAuth }) {
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+
+// ── Dashboard Page ──
+
+function DashboardPage({ user, business, billingStatus, setPage }) {
+  const [stats, setStats] = useState({ sent: 0, failed: 0, customers: 0, schedules: 0 });
+  const [recentHistory, setRecentHistory] = useState([]);
+  const [upcomingSchedules, setUpcomingSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const [histRes, custRes, schedRes] = await Promise.all([
+        supabase.from("send_history").select("*").eq("business_id", user.id).order("sent_at", { ascending: false }).limit(100),
+        supabase.from("customers").select("id").eq("business_id", user.id),
+        supabase.from("schedules").select("*").eq("business_id", user.id).eq("active", true).order("created_at", { ascending: false }),
+      ]);
+
+      const history = histRes.data || [];
+      const now = new Date();
+      const thisMonth = history.filter(h => new Date(h.sent_at).getMonth() === now.getMonth());
+
+      setStats({
+        sent: thisMonth.filter(h => h.status === "sent").length,
+        failed: thisMonth.filter(h => h.status === "failed").length,
+        customers: custRes.data?.length || 0,
+        schedules: schedRes.data?.length || 0,
+      });
+      setRecentHistory(history.slice(0, 5));
+      setUpcomingSchedules(schedRes.data?.slice(0, 3) || []);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const planInfo = { trial: "Free Trial", starter: "Starter", growth: "Growth", pro: "Pro" };
+  const usagePct = billingStatus ? Math.min(100, Math.round((billingStatus.messagesUsed / billingStatus.messageLimit) * 100)) : 0;
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
+  if (loading) return <div style={{ textAlign: "center", padding: "60px 0", color: "#aaa" }}>Loading dashboard...</div>;
+
+  return (
+    <div style={{ maxWidth: 860 }}>
+      {/* Greeting */}
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+          {greeting()}, {business?.name || "there"} 👋
+        </h2>
+        <p style={{ fontSize: 14, color: "#aaa" }}>Here's what's happening with your reminders this month.</p>
+      </div>
+
+      {/* Stats grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 28 }}>
+        {[
+          { label: "Sent this month", value: stats.sent, color: "#185FA5", bg: "#E6F1FB", action: () => setPage("History") },
+          { label: "Active customers", value: stats.customers, color: "#3B6D11", bg: "#EAF3DE", action: () => setPage("Customers") },
+          { label: "Active schedules", value: stats.schedules, color: "#534AB7", bg: "#EEEDFE", action: () => setPage("Schedules") },
+          { label: "Failed this month", value: stats.failed, color: stats.failed > 0 ? "#A32D2D" : "#888", bg: stats.failed > 0 ? "#FCEBEB" : "#f5f5f5", action: () => setPage("History") },
+        ].map(s => (
+          <div key={s.label} onClick={s.action} style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "16px 20px", cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: s.color, marginBottom: 4 }}>{s.value}</div>
+            <div style={{ fontSize: 13, color: "#888" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Usage meter */}
+      {billingStatus && (
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Message usage</span>
+              <span style={{ marginLeft: 10, fontSize: 12, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{planInfo[billingStatus.plan] || "Trial"}</span>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: usagePct > 90 ? "#A32D2D" : "#1a1a1a" }}>{billingStatus.messagesUsed} / {billingStatus.messageLimit}</span>
+          </div>
+          <div style={{ height: 8, background: "#f0f0f0", borderRadius: 99 }}>
+            <div style={{ height: 8, width: `${usagePct}%`, background: usagePct > 90 ? "#E24B4A" : usagePct > 70 ? "#BA7517" : "#185FA5", borderRadius: 99, transition: "width 0.5s" }} />
+          </div>
+          {usagePct > 70 && (
+            <div style={{ fontSize: 12, color: usagePct > 90 ? "#A32D2D" : "#854F0B", marginTop: 8 }}>
+              {usagePct > 90 ? "⚠️ Approaching limit — overages apply after limit" : "Getting close to your monthly limit"}
+              <button onClick={() => setPage("Billing")} style={{ marginLeft: 10, background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textDecoration: "underline" }}>Upgrade plan →</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        {/* Recent sends */}
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Recent sends</span>
+            <button onClick={() => setPage("History")} style={{ background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>View all →</button>
+          </div>
+          {recentHistory.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "#aaa", fontSize: 13 }}>
+              No messages sent yet.
+              <br />
+              <button onClick={() => setPage("Send Reminder")} style={{ marginTop: 8, background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 13, fontFamily: "inherit", textDecoration: "underline" }}>Send your first reminder →</button>
+            </div>
+          ) : recentHistory.map(h => (
+            <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "0.5px solid #f5f5f5" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.customer_name}</div>
+                <div style={{ fontSize: 11, color: "#aaa" }}>{new Date(h.sent_at).toLocaleDateString()}</div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: h.status === "sent" ? "#EAF3DE" : "#FCEBEB", color: h.status === "sent" ? "#3B6D11" : "#A32D2D", flexShrink: 0 }}>{h.status}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Upcoming schedules */}
+        <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>Active schedules</span>
+            <button onClick={() => setPage("Schedules")} style={{ background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Manage →</button>
+          </div>
+          {upcomingSchedules.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "#aaa", fontSize: 13 }}>
+              No active schedules.
+              <br />
+              <button onClick={() => setPage("Schedules")} style={{ marginTop: 8, background: "none", border: "none", color: "#185FA5", cursor: "pointer", fontSize: 13, fontFamily: "inherit", textDecoration: "underline" }}>Create a schedule →</button>
+            </div>
+          ) : upcomingSchedules.map(s => (
+            <div key={s.id} style={{ padding: "8px 0", borderBottom: "0.5px solid #f5f5f5" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{s.name}</div>
+                <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: "#EAF3DE", color: "#3B6D11", flexShrink: 0, marginLeft: 8 }}>Active</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{s.cadence} · {s.send_time} · {s.channel?.toUpperCase()}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ background: "#fff", border: "1px solid #f0f0f0", borderRadius: 12, padding: "18px 22px" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Quick actions</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {[
+            { label: "✉️ Send a reminder", page: "Send Reminder" },
+            { label: "👤 Add a customer", page: "Customers" },
+            { label: "🗓 Create a schedule", page: "Schedules" },
+            { label: "📋 Browse templates", page: "Templates" },
+          ].map(a => (
+            <button key={a.label} onClick={() => setPage(a.page)} style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid #e8e8e8", background: "#fafafa", color: "#444", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#E6F1FB"; e.currentTarget.style.borderColor = "#b5d4f4"; e.currentTarget.style.color = "#185FA5"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#fafafa"; e.currentTarget.style.borderColor = "#e8e8e8"; e.currentTarget.style.color = "#444"; }}>
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -2196,7 +2366,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [business, setBusiness] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [page, setPage] = useState("Customers");
+  const [page, setPage] = useState("Dashboard");
   const [toast, setToast] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -2259,6 +2429,7 @@ export default function App() {
   if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
 
   const pageTitles = {
+    Dashboard: ["Dashboard", "Welcome to Remind Zen"],
     Customers: ["Customers", "Add, organize, and manage your customers"],
     "Send Reminder": ["Send Reminder", "Send personalized email and SMS reminders in seconds"],
     Templates: ["Templates", "Save time with reusable message templates"],
@@ -2294,6 +2465,7 @@ export default function App() {
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, color: "#1a1a1a" }}>{pageTitles[page]?.[0]}</h1>
         <p style={{ margin: "0 0 28px", color: "#aaa", fontSize: 14 }}>{pageTitles[page]?.[1]}</p>
 
+        {page === "Dashboard" && <DashboardPage user={user} business={business} billingStatus={billingStatus} setPage={setPage} />}
         {page === "Customers" && <CustomersPage user={user} showToast={showToast} />}
         {page === "Send Reminder" && <SendPage user={user} business={business} showToast={showToast} />}
         {page === "Templates" && <TemplatesPage showToast={showToast} />}
