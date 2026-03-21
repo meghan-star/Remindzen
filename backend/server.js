@@ -68,7 +68,7 @@ function buildEmailHtml(body, businessName) {
   <div class="wrapper">
     <div class="body">${escaped}</div>
     <div class="footer">
-      <div class="footer-brand">Sent by <a href="https://remindzen.com">Remind Zen</a> on behalf of ${businessName}</div>
+      <div class="footer-brand">Sent by <a href="https://app.remindzen.com">Remind Zen</a> on behalf of ${businessName}</div>
       <div class="footer-unsub">To unsubscribe from these reminders, reply STOP or contact ${businessName} directly.</div>
     </div>
   </div></body></html>`;
@@ -354,8 +354,8 @@ app.post("/billing/checkout", async (req, res) => {
         metadata: { businessId, planKey },
       },
       allow_promotion_codes: true,
-      success_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}?cancelled=true`,
+      success_url: `${process.env.FRONTEND_URL || "https://app.remindzen.com"}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || "https://app.remindzen.com"}?cancelled=true`,
       metadata: { businessId, planKey },
     });
     res.json({ url: session.url });
@@ -371,7 +371,7 @@ app.post("/billing/portal", async (req, res) => {
     if (!biz?.stripe_customer_id) return res.status(400).json({ error: "No billing account found" });
     const session = await stripe.billingPortal.sessions.create({
       customer: biz.stripe_customer_id,
-      return_url: process.env.FRONTEND_URL || "https://remindzen.vercel.app",
+      return_url: process.env.FRONTEND_URL || "https://app.remindzen.com",
     });
     res.json({ url: session.url });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -435,7 +435,7 @@ app.post("/billing/webhook", express.raw({ type: "application/json" }), async (r
             to: biz.email,
             from: process.env.FROM_EMAIL,
             subject: "Action required: Payment failed for Remind Zen",
-            text: `Hi ${biz.name || "there"},\n\nYour payment for Remind Zen failed. Please update your payment method to keep your account active.\n\nManage billing: ${process.env.FRONTEND_URL || "https://remindzen.vercel.app"}\n\n— Remind Zen`,
+            text: `Hi ${biz.name || "there"},\n\nYour payment for Remind Zen failed. Please update your payment method to keep your account active.\n\nManage billing: ${process.env.FRONTEND_URL || "https://app.remindzen.com"}\n\n— Remind Zen`,
           });
         }
         break;
