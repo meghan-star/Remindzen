@@ -1621,12 +1621,19 @@ function AdminPage() {
     setBusinesses(businesses.map(x => x.id === b.id ? { ...x, suspended: !x.suspended } : x));
   };
 
-  const markRead = async (f) => {
-    await fetch(`${API}/admin/feedback/${f.id}/read`, { method: "POST", headers: adminHeaders });
-    setFeedback(feedback.map(x => x.id === f.id ? { ...x, read: true } : x));
+  const updateFeedbackStatus = async (f, status) => {
+    await supabase.from("feedback").update({ status, read: status !== "new" }).eq("id", f.id);
+    setFeedback(feedback.map(x => x.id === f.id ? { ...x, status, read: status !== "new" } : x));
   };
 
-  const unreadCount = feedback.filter(f => !f.read).length;
+  const [feedbackFilter, setFeedbackFilter] = useState("active");
+  const unreadCount = feedback.filter(f => !f.read && f.status !== "archived").length;
+  const filteredFeedback = feedback.filter(f => {
+    if (feedbackFilter === "active") return f.status !== "archived" && f.status !== "resolved";
+    if (feedbackFilter === "resolved") return f.status === "resolved";
+    if (feedbackFilter === "archived") return f.status === "archived";
+    return true;
+  });
 
   return (
     <div>
@@ -1725,26 +1732,48 @@ function AdminPage() {
       )}
 
       {!loading && tab === "feedback" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {feedback.length === 0 && <p style={{ color: "var(--text-hint)", textAlign: "center", padding: "40px 0" }}>No feedback yet.</p>}
-          {feedback.map(f => (
-            <div key={f.id} style={{ background: f.read ? "#fff" : "#f0f6ff", border: `1px solid ${f.read ? "#f0f0f0" : "#b5d4f4"}`, borderRadius: 12, padding: "16px 20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                <div>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{f.subject}</span>
-                  {f.type?.startsWith("pro_priority") && <span style={{ marginLeft: 8, fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>⭐ PRO</span>}
-                  <span style={{ marginLeft: 8, fontSize: 11, background: f.type?.includes("bug") ? "#FCEBEB" : f.type?.includes("feature") ? "#EEEDFE" : "#F1EFE8", color: f.type?.includes("bug") ? "#A32D2D" : f.type?.includes("feature") ? "#3C3489" : "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{f.type?.replace("pro_priority_", "")}</span>
-                  {!f.read && <span style={{ marginLeft: 8, fontSize: 11, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>New</span>}
+        <div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            {[["active", "Active"], ["resolved", "Resolved"], ["archived", "Archived"], ["all", "All"]].map(([val, label]) => (
+              <button key={val} onClick={() => setFeedbackFilter(val)} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: feedbackFilter === val ? "#185FA5" : "var(--bg-hover)", color: feedbackFilter === val ? "#fff" : "var(--text-secondary)", fontWeight: 500, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filteredFeedback.length === 0 && <p style={{ color: "var(--text-hint)", textAlign: "center", padding: "40px 0" }}>No feedback in this category.</p>}
+            {filteredFeedback.map(f => (
+              <div key={f.id} style={{ background: !f.read ? "var(--bg-selected)" : "var(--bg-card)", border: `1px solid ${!f.read ? "#b5d4f4" : "var(--border)"}`, borderRadius: 12, padding: "16px 20px", opacity: f.status === "archived" ? 0.6 : 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{f.subject}</span>
+                    {f.type?.startsWith("pro_priority") && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>⭐ PRO</span>}
+                    <span style={{ fontSize: 11, background: f.type?.includes("bug") ? "#FCEBEB" : f.type?.includes("feature") ? "#EEEDFE" : "#F1EFE8", color: f.type?.includes("bug") ? "#A32D2D" : f.type?.includes("feature") ? "#3C3489" : "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>{f.type?.replace("pro_priority_", "")}</span>
+                    {!f.read && <span style={{ fontSize: 11, background: "#E6F1FB", color: "#185FA5", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>New</span>}
+                    {f.status === "resolved" && <span style={{ fontSize: 11, background: "#EAF3DE", color: "#3B6D11", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>✓ Resolved</span>}
+                    {f.status === "in_progress" && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>In progress</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-hint)", flexShrink: 0 }}>{new Date(f.created_at).toLocaleDateString()}</div>
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-hint)" }}>{new Date(f.created_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.6 }}>{f.message}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-hint)" }}>{f.business_name} · {f.email}</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {f.status !== "in_progress" && f.status !== "resolved" && f.status !== "archived" && (
+                      <button onClick={() => updateFeedbackStatus(f, "in_progress")} style={{ ...btnStyle(false), fontSize: 11, padding: "3px 10px", color: "#854F0B", borderColor: "#FAC775" }}>In progress</button>
+                    )}
+                    {f.status !== "resolved" && f.status !== "archived" && (
+                      <button onClick={() => updateFeedbackStatus(f, "resolved")} style={{ ...btnStyle(false), fontSize: 11, padding: "3px 10px", color: "#3B6D11", borderColor: "#C0DD97" }}>Resolve</button>
+                    )}
+                    {f.status !== "archived" && (
+                      <button onClick={() => updateFeedbackStatus(f, "archived")} style={{ ...btnStyle(false), fontSize: 11, padding: "3px 10px", color: "var(--text-muted)" }}>Archive</button>
+                    )}
+                    {f.status === "archived" && (
+                      <button onClick={() => updateFeedbackStatus(f, "new")} style={{ ...btnStyle(false), fontSize: 11, padding: "3px 10px" }}>Restore</button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.6 }}>{f.message}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: "var(--text-hint)" }}>{f.business_name} · {f.email}</div>
-                {!f.read && <button onClick={() => markRead(f)} style={{ ...btnStyle(false), fontSize: 12, padding: "4px 12px" }}>Mark as read</button>}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
