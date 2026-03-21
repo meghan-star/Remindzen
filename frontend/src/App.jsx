@@ -2398,17 +2398,28 @@ function LegalPage() {
 function AppHeader({ page, setPage, user, business, billingStatus }) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
-  const nav = user?.id === ADMIN_UID ? ADMIN_NAV : NAV;
+  const isAdmin = user?.id === ADMIN_UID;
+
+  const primaryNav = ["Dashboard", "Customers", "Send Reminder", "Schedules", "History", "Billing"];
+  const secondaryNav = isAdmin
+    ? ["Templates", "Settings", "Legal", "Contact", "Admin"]
+    : ["Templates", "Settings", "Legal", "Contact"];
+
+  const allNav = [...primaryNav, ...secondaryNav];
+  const isSecondary = secondaryNav.includes(page);
 
   return (
-    <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: isMobile ? "0 16px" : "0 32px", position: "relative" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 56, gap: isMobile ? 8 : 24 }}>
-        <img src={logo} alt="Remind Zen" style={{ height: 32, flexShrink: 0, cursor: "pointer" }} onClick={() => setPage("Customers")} />
+    <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: isMobile ? "0 16px" : "0 24px", position: "relative" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", height: 56, gap: isMobile ? 8 : 16 }}>
 
+        {/* Logo */}
+        <img src={logo} alt="Remind Zen" style={{ height: 32, flexShrink: 0, cursor: "pointer" }} onClick={() => setPage("Dashboard")} />
+
+        {/* Desktop primary nav */}
         {!isMobile && (
-          <nav style={{ display: "flex", gap: 2, flex: 1, flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
-            {nav.map(n => (
-              <button key={n} onClick={() => setPage(n)} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 12, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+          <nav style={{ display: "flex", gap: 2, flex: 1, flexWrap: "nowrap" }}>
+            {primaryNav.map(n => (
+              <button key={n} onClick={() => { setPage(n); setMenuOpen(false); }} style={{ padding: "5px 9px", borderRadius: 8, border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#666", fontWeight: page === n ? 600 : 400, fontSize: 12, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                 {n}
               </button>
             ))}
@@ -2417,52 +2428,80 @@ function AppHeader({ page, setPage, user, business, billingStatus }) {
 
         {isMobile && <div style={{ flex: 1 }} />}
 
+        {/* Right side — usage meter + hamburger */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          {!isMobile && (
-            <>
-              {billingStatus && (
-                <button onClick={() => setPage("Billing")} title="Message usage this month" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 8, border: "1px solid #f0f0f0" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                    <span style={{ fontSize: 11, color: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#A32D2D" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#854F0B" : "#555", whiteSpace: "nowrap", fontWeight: 500 }}>
-                      {billingStatus.messagesUsed}/{billingStatus.messageLimit} msgs
-                    </span>
-                    <div style={{ width: 64, height: 3, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
-                      <div style={{ height: 3, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#BA7517" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%`, transition: "width 0.5s" }} />
-                    </div>
-                  </div>
-                </button>
-              )}
-              <div style={{ fontSize: 11, color: "#bbb", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || ""}</div>
-            </>
-          )}
-          {billingStatus && isMobile && (
-            <button onClick={() => {}} title="Message usage" style={{ background: "none", border: "none", cursor: "pointer", padding: "3px 8px", display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ width: 28, height: 3, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
-                <div style={{ height: 3, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%` }} />
+
+          {/* Usage meter — desktop only */}
+          {!isMobile && billingStatus && (
+            <button onClick={() => setPage("Billing")} title="Message usage this month" style={{ background: "none", border: "1px solid #f0f0f0", cursor: "pointer", padding: "4px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                <span style={{ fontSize: 11, color: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#A32D2D" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#854F0B" : "#555", whiteSpace: "nowrap", fontWeight: 500 }}>
+                  {billingStatus.messagesUsed}/{billingStatus.messageLimit} msgs
+                </span>
+                <div style={{ width: 64, height: 3, borderRadius: 99, background: "#f0f0f0", overflow: "hidden" }}>
+                  <div style={{ height: 3, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : billingStatus.messagesUsed / billingStatus.messageLimit > 0.7 ? "#BA7517" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%`, transition: "width 0.5s" }} />
+                </div>
               </div>
             </button>
           )}
-          {isMobile && (
-            <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, padding: 4, color: "#555" }}>
-              {menuOpen ? "✕" : "☰"}
-            </button>
+
+          {/* Business name — desktop only */}
+          {!isMobile && (
+            <div style={{ fontSize: 11, color: "#bbb", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.name || ""}</div>
           )}
+
+          {/* Hamburger — always visible, shows secondary nav on desktop, all nav on mobile */}
+          <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: isSecondary ? "#f0f6ff" : "none", border: isSecondary ? "1px solid #b5d4f4" : "1px solid #f0f0f0", cursor: "pointer", borderRadius: 8, padding: "6px 10px", fontSize: 16, color: isSecondary ? "#185FA5" : "#555", display: "flex", alignItems: "center", gap: 6 }}>
+            {menuOpen ? "✕" : "☰"}
+            {!isMobile && <span style={{ fontSize: 12, fontWeight: isSecondary ? 600 : 400, color: isSecondary ? "#185FA5" : "#666" }}>More</span>}
+          </button>
         </div>
       </div>
 
-      {isMobile && menuOpen && (
-        <div style={{ background: "#fff", borderTop: "1px solid #f0f0f0", padding: "8px 0 16px" }}>
-          {nav.map(n => (
-            <button key={n} onClick={() => { setPage(n); setMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 20px", border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#444", fontWeight: page === n ? 600 : 400, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>
+      {/* Dropdown menu */}
+      {menuOpen && (
+        <div style={{ position: "absolute", top: 56, right: 0, background: "#fff", border: "1px solid #f0f0f0", borderRadius: "0 0 12px 12px", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", zIndex: 200, minWidth: 200, overflow: "hidden" }}>
+          {/* On mobile show primary nav too */}
+          {isMobile && (
+            <>
+              {primaryNav.map(n => (
+                <button key={n} onClick={() => { setPage(n); setMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "13px 20px", border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#444", fontWeight: page === n ? 600 : 400, fontSize: 14, cursor: "pointer", fontFamily: "inherit", borderBottom: "1px solid #f5f5f5" }}>
+                  {n}
+                </button>
+              ))}
+              <div style={{ height: 1, background: "#e8e8e8", margin: "4px 0" }} />
+            </>
+          )}
+
+          {/* Secondary nav — always in dropdown */}
+          {secondaryNav.map(n => (
+            <button key={n} onClick={() => { setPage(n); setMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 20px", border: "none", background: page === n ? "#f0f6ff" : "transparent", color: page === n ? "#185FA5" : "#555", fontWeight: page === n ? 600 : 400, fontSize: 13, cursor: "pointer", fontFamily: "inherit", borderBottom: "1px solid #f5f5f5" }}>
               {n}
             </button>
           ))}
-          <div style={{ borderTop: "1px solid #f0f0f0", margin: "8px 0", padding: "8px 20px 0" }}>
-            <button onClick={() => { setPage("Feedback"); setMenuOpen(false); }} style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: 14, padding: 0, fontFamily: "inherit" }}>Send feedback</button>
-          </div>
-          <div style={{ fontSize: 12, color: "#bbb", padding: "4px 20px" }}>{business?.name || user?.email}</div>
+
+          {/* Usage meter on mobile */}
+          {isMobile && billingStatus && (
+            <div style={{ padding: "12px 20px", borderTop: "1px solid #f0f0f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#888", marginBottom: 6 }}>
+                <span>Messages this month</span>
+                <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{billingStatus.messagesUsed}/{billingStatus.messageLimit}</span>
+              </div>
+              <div style={{ height: 4, background: "#f0f0f0", borderRadius: 99 }}>
+                <div style={{ height: 4, borderRadius: 99, background: billingStatus.messagesUsed / billingStatus.messageLimit > 0.9 ? "#E24B4A" : "#185FA5", width: `${Math.min(100, Math.round(billingStatus.messagesUsed / billingStatus.messageLimit * 100))}%` }} />
+              </div>
+            </div>
+          )}
+
+          {/* Business name on mobile */}
+          {isMobile && (
+            <div style={{ padding: "10px 20px", fontSize: 12, color: "#bbb", borderTop: "1px solid #f5f5f5" }}>{business?.name || user?.email}</div>
+          )}
         </div>
       )}
+
+      {/* Click outside to close */}
+      {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />}
     </div>
   );
 }
