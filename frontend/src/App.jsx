@@ -2430,6 +2430,14 @@ function LegalPage() {
 
           <p>Remind Zen LLC ("we", "us", or "our") operates the Remind Zen platform. This Privacy Policy explains how we collect, use, and protect information when you use our Service.</p>
 
+          <div style={{ background: "var(--bg-hover)", borderRadius: 10, padding: "14px 18px", marginBottom: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Our commitments to you:</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>🔒 Your data is encrypted in transit and at rest</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>🚫 We never sell your data — ever</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>📵 We never send unsolicited marketing messages to your customers</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>💳 Payments are processed securely by Stripe</div>
+          </div>
+
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>1. Information we collect</h3>
           <p>We collect information you provide directly to us, including your business name, email address, and password when you create an account. We also store customer contact information (names, email addresses, phone numbers) that you enter into the platform on behalf of your business.</p>
 
