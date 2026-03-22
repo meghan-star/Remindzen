@@ -2723,7 +2723,6 @@ export default function App() {
         {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} darkMode={darkMode} setDarkMode={setDarkMode} />}
         {page === "Legal" && <LegalPage />}
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
-        {page === "Admin" && <AdminPage user={user} showToast={showToast} />}
         {page === "Admin" && user?.id === ADMIN_UID && <AdminPage />}
         {page === "Contact" && <ContactPage user={user} business={business} showToast={showToast} />}
         
