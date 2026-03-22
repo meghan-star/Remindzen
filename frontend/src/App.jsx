@@ -1684,6 +1684,7 @@ function AdminPage() {
               </button>
             </div>
           ))}
+          </div>
         </div>
       )}
 
