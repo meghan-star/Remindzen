@@ -470,8 +470,10 @@ function CustomersPage({ user, showToast }) {
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [activeTag, setActiveTag] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("active"); // active | inactive | all
+  const [alphaFilter, setAlphaFilter] = useState(null);
   const [tagInput, setTagInput] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [], next_appointment: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [], next_appointment: "", inactive: false });
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -490,7 +492,7 @@ function CustomersPage({ user, showToast }) {
 
   const openEdit = (c) => {
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null, tags: c.tags || [], next_appointment: c.next_appointment || "" });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", notes: c.notes || "", preferred_channel: c.preferred_channel || "email", unsubscribed: c.unsubscribed || false, sms_consent: c.sms_consent || false, sms_consent_at: c.sms_consent_at || null, tags: c.tags || [], next_appointment: c.next_appointment || "", inactive: c.inactive || false });
     setShowModal(true);
   };
 
@@ -619,17 +621,22 @@ function CustomersPage({ user, showToast }) {
   const allTags = [...new Set(customers.flatMap(c => c.tags || []))].sort();
 
   const filtered = customers.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email?.toLowerCase().includes(search.toLowerCase()) ||
       c.phone?.includes(search);
     const matchesTag = !activeTag || (c.tags || []).includes(activeTag);
-    return matchesSearch && matchesTag;
+    const matchesStatus = statusFilter === "all" ? true : statusFilter === "inactive" ? c.inactive : !c.inactive;
+    const matchesAlpha = !alphaFilter || c.name.toUpperCase().startsWith(alphaFilter);
+    return matchesSearch && matchesTag && matchesStatus && matchesAlpha;
   });
+
+  const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const usedLetters = new Set(customers.map(c => c.name?.[0]?.toUpperCase()).filter(Boolean));
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, gap: 8, flexWrap: "wrap" }}>
-        <input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 120, marginBottom: 0 }} />
+        <input placeholder="Search customers..." value={search} onChange={e => { setSearch(e.target.value); setAlphaFilter(null); }} style={{ ...inputStyle, flex: 1, minWidth: 120, marginBottom: 0 }} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <label style={{ ...btnStyle(false), cursor: "pointer", display: "inline-flex", alignItems: "center", fontSize: 13 }}>
             📥 Import
@@ -647,6 +654,24 @@ function CustomersPage({ user, showToast }) {
           <button onClick={() => setBulkSelected([])} style={{ ...btnStyle(false), fontSize: 13, padding: "5px 14px" }}>Clear selection</button>
         </div>
       )}
+
+      {/* Status filter tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {[["active", "Active"], ["inactive", "Inactive"], ["all", "All"]].map(([val, label]) => (
+          <button key={val} onClick={() => setStatusFilter(val)} style={{ padding: "5px 14px", borderRadius: 8, border: "none", background: statusFilter === val ? "#185FA5" : "var(--bg-hover)", color: statusFilter === val ? "#fff" : "var(--text-secondary)", fontWeight: statusFilter === val ? 600 : 400, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
+        ))}
+        <span style={{ fontSize: 13, color: "var(--text-hint)", alignSelf: "center", marginLeft: 4 }}>{filtered.length} customer{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* A-Z quick jump */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginBottom: 14 }}>
+        {ALPHABET.map(letter => (
+          <button key={letter} onClick={() => setAlphaFilter(alphaFilter === letter ? null : letter)} style={{ width: 26, height: 26, borderRadius: 6, border: "none", background: alphaFilter === letter ? "#185FA5" : usedLetters.has(letter) ? "var(--bg-hover)" : "transparent", color: alphaFilter === letter ? "#fff" : usedLetters.has(letter) ? "var(--text-secondary)" : "var(--text-hint)", fontSize: 11, fontWeight: 500, cursor: usedLetters.has(letter) ? "pointer" : "default", fontFamily: "inherit" }}>
+            {letter}
+          </button>
+        ))}
+        {alphaFilter && <button onClick={() => setAlphaFilter(null)} style={{ padding: "2px 8px", borderRadius: 6, border: "none", background: "var(--bg-hover)", color: "var(--text-secondary)", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>✕ Clear</button>}
+      </div>
 
       {allTags.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -690,6 +715,7 @@ function CustomersPage({ user, showToast }) {
                 )}
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                {c.inactive && <span style={{ fontSize: 11, background: "#F1EFE8", color: "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>Inactive</span>}
                 <Badge type={c.preferred_channel} label={c.preferred_channel === "both" ? "Email + SMS" : c.preferred_channel?.toUpperCase()} />
                 {c.unsubscribed && <span style={{ fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 99, background: "#F1EFE8", color: "#5F5E5A" }}>Opted out</span>}
               </div>
