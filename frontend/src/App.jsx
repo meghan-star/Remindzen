@@ -146,6 +146,23 @@ function TagSuggestions({ tags, onAdd }) {
   );
 }
 
+function InviteCodeField({ form, setForm }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ marginBottom: 4 }}>
+      {!show ? (
+        <button type="button" onClick={() => setShow(true)} style={{ background: "none", border: "none", color: "#185FA5", fontSize: 12, cursor: "pointer", padding: 0, fontFamily: "inherit", marginBottom: 8 }}>
+          Have an invite code?
+        </button>
+      ) : (
+        <input style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--border-mid)", borderRadius: 10, fontSize: 14, marginBottom: 8, fontFamily: "inherit", outline: "none", background: "var(--bg-input)", color: "var(--text-primary)", textTransform: "uppercase" }}
+          placeholder="Enter invite code" value={form.inviteCode} autoFocus
+          onChange={e => setForm({ ...form, inviteCode: e.target.value.toUpperCase() })} />
+      )}
+    </div>
+  );
+}
+
 // ── Auth Screen ──
 
 function AuthScreen({ onAuth }) {
@@ -240,7 +257,7 @@ function AuthScreen({ onAuth }) {
             {mode === "signup" && (
               <>
                 <input style={inputStyle} placeholder="Business name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-                <input style={{ ...inputStyle, textTransform: "uppercase" }} placeholder="Invite code (optional)" value={form.inviteCode} onChange={e => setForm({ ...form, inviteCode: e.target.value.toUpperCase() })} />
+                <InviteCodeField form={form} setForm={setForm} />
               </>
             )}
             <input style={inputStyle} placeholder="Email address" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
@@ -1567,6 +1584,7 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [newCode, setNewCode] = useState({ code: "", trial_days: 30, locked_plan: "", max_uses: "", note: "" });
   const [saving, setSaving] = useState(false);
+  const [bizSearch, setBizSearch] = useState("");
 
   const adminHeaders = { "Content-Type": "application/json", "x-admin-uid": "2bd0487e-a317-4cbd-9871-70d87aacaf47" };
 
@@ -1648,8 +1666,11 @@ function AdminPage() {
       {loading ? <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-hint)" }}>Loading...</div> : null}
 
       {!loading && tab === "businesses" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {businesses.map(b => (
+        <div>
+          <input placeholder="Search businesses..." style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--border-mid)", borderRadius: 10, fontSize: 14, marginBottom: 16, fontFamily: "inherit", outline: "none", background: "var(--bg-input)", color: "var(--text-primary)" }}
+            value={bizSearch} onChange={e => setBizSearch(e.target.value)} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {businesses.filter(b => !bizSearch || b.name?.toLowerCase().includes(bizSearch.toLowerCase()) || b.email?.toLowerCase().includes(bizSearch.toLowerCase())).map(b => (
             <div key={b.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, opacity: b.suspended ? 0.6 : 1 }}>
               <Avatar name={b.name || b.email} />
               <div style={{ flex: 1 }}>
