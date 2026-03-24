@@ -440,6 +440,75 @@ app.post("/billing/webhook", express.raw({ type: "application/json" }), async (r
         }
         break;
       }
+      case "customer.subscription_trial_will_end": {
+        const sub = event.data.object;
+        const trialEndDate = new Date(sub.trial_end * 1000);
+        const { data: biz } = await supabase.from("businesses").select("id, email, name").eq("stripe_customer_id", sub.customer).single();
+        if (biz?.email) {
+          // Get usage stats
+          const [{ count: custCount }, { count: sentCount }, { data: schedules }] = await Promise.all([
+            supabase.from("customers").select("*", { count: "exact", head: true }).eq("business_id", biz.id),
+            supabase.from("send_history").select("*", { count: "exact", head: true }).eq("business_id", biz.id).eq("status", "sent"),
+            supabase.from("schedules").select("id").eq("business_id", biz.id).eq("active", true),
+          ]);
+          const customers = custCount || 0;
+          const sent = sentCount || 0;
+          const activeSchedules = schedules?.length || 0;
+          const dateStr = trialEndDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+          const billingUrl = `${process.env.FRONTEND_URL || "https://app.remindzen.com"}/#Billing`;
+
+          await sgMail.send({
+            to: biz.email,
+            from: { email: process.env.FROM_EMAIL, name: "Remind Zen" },
+            subject: `Your free trial ends in 3 days — ${biz.name || "Remind Zen"}`,
+            html: `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:20px;background:#f7f8fa;font-family:'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e8e8e8;border-radius:12px;overflow:hidden;">
+    <div style="background:#3B6F73;padding:28px 32px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">🔔</div>
+      <div style="color:white;font-size:20px;font-weight:700;">Remind Zen</div>
+      <div style="color:rgba(255,255,255,0.75);font-size:13px;margin-top:4px;">Helpful reminders for busy businesses</div>
+    </div>
+    <div style="padding:32px;">
+      <p style="font-size:16px;font-weight:600;color:#1a1a1a;margin:0 0 12px;">Your free trial ends in 3 days 🎉</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 16px;">Hi ${biz.name || "there"}, just a heads up — your 14-day free trial ends on <strong>${dateStr}</strong>. Your subscription will activate automatically so your reminders keep running without any interruption.</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">No action needed on your end. We just wanted to make sure you knew what to expect.</p>
+      <div style="background:#f0f6ff;border-radius:10px;padding:18px 20px;margin:20px 0;">
+        <div style="font-size:13px;font-weight:600;color:#185FA5;margin-bottom:12px;">Here's what you've set up so far:</div>
+        <div style="display:flex;gap:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#185FA5;">${customers}</div>
+            <div style="font-size:12px;color:#888;">Customers</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#185FA5;">${sent}</div>
+            <div style="font-size:12px;color:#888;">Reminders sent</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:#185FA5;">${activeSchedules}</div>
+            <div style="font-size:12px;color:#888;">Schedules active</div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">If you'd like to make any changes to your plan before it activates, you can do that from your Billing page. And if you decide Remind Zen isn't the right fit, you can cancel anytime — no hard feelings.</p>
+      <a href="${billingUrl}" style="display:block;text-align:center;background:#3B6F73;color:white;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:20px;">View my billing →</a>
+      <p style="font-size:13px;color:#aaa;line-height:1.7;margin:0;">Questions? Just reply to this email — I read every message personally.<br/><em>— Meghan, Founder of Remind Zen</em></p>
+    </div>
+    <div style="background:#f9f9f9;padding:16px 32px;text-align:center;border-top:1px solid #f0f0f0;">
+      <p style="font-size:12px;color:#bbb;margin:0;">Remind Zen · Ventura, CA · <a href="https://remindzen.com" style="color:#bbb;">remindzen.com</a></p>
+      <p style="font-size:12px;color:#bbb;margin:6px 0 0;">You're receiving this because you signed up for a Remind Zen trial.</p>
+    </div>
+  </div>
+</body>
+</html>`,
+            text: `Hi ${biz.name || "there"}, your Remind Zen trial ends on ${dateStr}. Your subscription activates automatically — no action needed. You've added ${customers} customers and sent ${sent} reminders. View billing: ${billingUrl} — Meghan, Founder of Remind Zen`,
+          });
+          console.log(`[Billing] Trial ending email sent to ${biz.email}`);
+        }
+        break;
+      }
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
         const { data: biz } = await supabase.from("businesses").select("id").eq("stripe_customer_id", invoice.customer).single();
