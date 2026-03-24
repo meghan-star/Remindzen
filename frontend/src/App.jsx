@@ -568,9 +568,14 @@ function CustomersPage({ user, showToast }) {
     }
 
     if (editingCustomer) {
-      const { error } = await supabase.from("customers").update({ ...form }).eq("id", editingCustomer.id);
+      const updateData = {
+        ...form,
+        next_appointment: form.next_appointment || null,
+        sms_consent_at: form.sms_consent_at || null,
+      };
+      const { error } = await supabase.from("customers").update(updateData).eq("id", editingCustomer.id);
       if (!error) { showToast(`${form.name} updated`, "success"); loadCustomers(); setShowModal(false); }
-      else showToast("Update failed", "error");
+      else { console.error("Update error:", error); showToast("Update failed: " + error.message, "error"); }
     } else {
       if (form.email) {
         const { data: dup } = await supabase.from("customers").select("id,name").eq("business_id", user.id).eq("email", form.email).single();
@@ -580,9 +585,10 @@ function CustomersPage({ user, showToast }) {
         const { data: dup } = await supabase.from("customers").select("id,name").eq("business_id", user.id).eq("phone", form.phone).single();
         if (dup) { showToast(`A customer with this phone number already exists: ${dup.name}`, "error"); return; }
       }
-      const { error } = await supabase.from("customers").insert({ ...form, business_id: user.id });
+      const insertData = { ...form, business_id: user.id, next_appointment: form.next_appointment || null, sms_consent_at: form.sms_consent_at || null };
+      const { error } = await supabase.from("customers").insert(insertData);
       if (!error) { showToast(`${form.name} added`, "success"); loadCustomers(); setShowModal(false); }
-      else showToast("Add failed", "error");
+      else { console.error("Insert error:", error); showToast("Add failed: " + error.message, "error"); }
     }
   };
 
