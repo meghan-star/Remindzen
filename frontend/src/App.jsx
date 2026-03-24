@@ -17,10 +17,16 @@ const TEMPLATES = [
   { id: 8, name: "Re-engagement", channel: "both", subject: "We miss you! — {business_name}", body: "Hi {name}, it's been a while since we've seen you at {business_name}! We'd love to have you back. Get in touch to schedule your next appointment — we have some great availability coming up." },
   { id: 9, name: "Appointment Confirmation", channel: "both", subject: "Your appointment is confirmed — {business_name}", body: "Hi {name}, your appointment with {business_name} on {date} at {time} is confirmed. If you need to reschedule, please contact us as soon as possible. See you then!" },
   { id: 10, name: "No-show Follow-up", channel: "sms", body: "Hi {name}, we missed you today at {business_name}! We'd love to reschedule your appointment at a time that works better for you. Just reply or give us a call." },
+  { id: 11, name: "We Saved Your Spot", channel: "both", subject: "We saved your spot — {business_name}", body: "Hi {name}, we wanted to reach out because we've been holding your usual spot open at {business_name}. It's been a while since we've seen you! We'd love to have you back — just reply or call us to book your next appointment." },
+  { id: 12, name: "You're Almost Due", channel: "both", subject: "You're almost due for your next visit — {business_name}", body: "Hi {name}, just a friendly heads up that you're almost due for your next service at {business_name}! Staying on schedule helps get the best results. Book your appointment before your spot fills up." },
+  { id: 13, name: "Limited Availability", channel: "both", subject: "Limited spots available this week — {business_name}", body: "Hi {name}, we have a few openings this week at {business_name} and wanted to give you first pick before they fill up. Reply or call us to grab your spot — we'd love to see you!" },
+  { id: 14, name: "You're Our VIP", channel: "email", subject: "A special thank you from {business_name}", body: "Hi {name}, as one of our most valued customers we just wanted to say thank you for your continued loyalty. As a small token of our appreciation, please mention this message on your next visit. We truly appreciate your support!" },
+  { id: 15, name: "Don't Lose Your Progress", channel: "both", subject: "Don't lose your progress — {business_name}", body: "Hi {name}, we noticed it's been a little while since your last visit to {business_name}. Staying consistent is the best way to maintain your results! We'd love to help you keep up the great work. Ready to book?" },
+  { id: 16, name: "Quick Check-in", channel: "sms", body: "Hi {name}! Just checking in from {business_name} — hope you've been well! We'd love to see you again soon. Any questions or ready to book? Just reply to this message." },
 ];
 
-const NAV = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact"];
-const ADMIN_NAV = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "Legal", "Contact", "Admin"];
+const NAV = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "About", "Legal", "Contact"];
+const ADMIN_NAV = ["Dashboard", "Customers", "Send Reminder", "Templates", "Schedules", "History", "Billing", "Settings", "About", "Legal", "Contact", "Admin"];
 
 // ── Shared UI ──
 
@@ -2422,6 +2428,49 @@ function ContactPage({ user, business, showToast }) {
   );
 }
 
+
+// ── About Page ──
+
+function AboutPage() {
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "32px 36px", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3B6F73", marginBottom: 16 }}>A note from the founder</div>
+        <div style={{ borderLeft: "4px solid #3B6F73", paddingLeft: 24, lineHeight: 1.85, fontFamily: "Georgia, serif" }}>
+          <p style={{ fontSize: 17, margin: "0 0 16px", fontWeight: 500, color: "var(--text-primary)" }}>I built Remind Zen because of a simple frustration that I suspect a lot of people share.</p>
+          <p style={{ fontSize: 15, margin: "0 0 14px", color: "var(--text-secondary)" }}>I have a chronic illness, which means I'm careful about where my time and energy go. When I found a service I loved and wanted to book monthly, I discovered there was no way to do it — no online booking, no reminders. Just me trying to remember to call each month. Sometimes I forgot. Sometimes life got in the way. The business lost out, and so did I.</p>
+          <p style={{ fontSize: 15, margin: "0 0 14px", color: "var(--text-secondary)" }}>It seemed like such an easy thing to fix. A simple, automated reminder — "Hey, it's been a month, time to book your next session" — would have made all the difference. For me as a customer, and for that small business trying to fill their schedule.</p>
+          <p style={{ fontSize: 15, margin: "0 0 14px", color: "var(--text-secondary)" }}>That's what Remind Zen is. I built it specifically for very small businesses — the ones who don't have a big tech budget or a dedicated marketing team, but who deliver real value to their customers and deserve tools that help them grow. I wanted it to be affordable enough that the ROI is obvious from day one.</p>
+          <p style={{ fontSize: 15, margin: "0 0 20px", color: "var(--text-secondary)" }}>Because here's what I've come to believe: a good reminder doesn't just help a business. It helps the customer too. It takes one more thing off their plate. And for someone like me, that matters.</p>
+          <p style={{ fontSize: 15, margin: "0 0 4px", color: "var(--text-primary)", fontStyle: "italic" }}>— Meghan, Founder of Remind Zen</p>
+          <p style={{ fontSize: 13, color: "var(--text-hint)", margin: 0 }}>Ventura, CA</p>
+        </div>
+      </div>
+
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, padding: "28px 36px" }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600 }}>Our mission</h3>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.8, margin: "0 0 14px" }}>To help small service businesses spend less time chasing customers and more time serving them — through simple, affordable, and reliable automated reminders.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
+          {[
+            ["🔒", "Privacy first", "We never sell your data or spam your customers."],
+            ["💚", "Built for small business", "Affordable pricing designed for businesses of 1–10 people."],
+            ["⚡", "Simple by design", "Set up in 2 minutes. No tech skills needed."],
+            ["🤝", "We're here for you", "Real support from a real person — hello@remindzen.com"],
+          ].map(([emoji, title, desc]) => (
+            <div key={title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>{emoji}</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{title}</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Legal Page ──
 
 function LegalPage() {
@@ -2457,16 +2506,21 @@ function LegalPage() {
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>4. Account responsibility</h3>
           <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorized use of your account. We are not liable for any loss or damage arising from your failure to protect your account information.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>5. Service availability</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>5. Billing and payments</h3>
+          <p>All plans require a valid credit card at signup. Each plan includes a 14-day free trial. Your card will be charged automatically at the end of the trial period unless you cancel before then. Subscriptions renew automatically on a monthly or annual basis depending on your selected plan. Cancellations take effect at the end of the current billing period — no refunds are issued for partial months or unused time.</p>
+          <p style={{ marginTop: 12 }}>If your usage exceeds your plan's monthly message limit, overage charges will apply at the rates listed on our pricing page ($0.01 per email, $0.05 per SMS). Overages are calculated at the end of each billing period and charged automatically to your card on file.</p>
+          <p style={{ marginTop: 12 }}>We reserve the right to suspend or terminate accounts with failed payments. You will be notified by email before any suspension occurs.</p>
+
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>6. Service availability</h3>
           <p>We strive to maintain reliable service but do not guarantee uninterrupted or error-free operation. We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>6. Limitation of liability</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>7. Limitation of liability</h3>
           <p>To the maximum extent permitted by law, Remind Zen LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service. Our total liability to you shall not exceed the amounts paid by you to us in the three months preceding the claim.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>7. Changes to terms</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Changes to terms</h3>
           <p>We reserve the right to update these Terms at any time. We will notify you of significant changes by email or by posting a notice within the Service. Your continued use of the Service after changes constitutes your acceptance of the new Terms.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Contact</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>9. Contact</h3>
           <p style={{ margin: 0 }}>For questions about these Terms, contact us at <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a>.</p>
         </div>
       )}
@@ -2507,7 +2561,7 @@ function LegalPage() {
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>7. Your rights</h3>
           <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at the address below. California residents may have additional rights under the CCPA.</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Contact</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>9. Contact</h3>
           <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
         </div>
       )}
@@ -2769,6 +2823,7 @@ export default function App() {
         {page === "Billing" && <BillingPage user={user} business={business} />}
         {page === "Schedules" && <SchedulesPage user={user} showToast={showToast} />}
         {page === "Settings" && <SettingsPage user={user} business={business} setBusiness={setBusiness} showToast={showToast} darkMode={darkMode} setDarkMode={setDarkMode} />}
+        {page === "About" && <AboutPage />}
         {page === "Legal" && <LegalPage />}
         {page === "Feedback" && <FeedbackPage user={user} business={business} showToast={showToast} />}
         {page === "Admin" && user?.id === ADMIN_UID && <AdminPage />}
