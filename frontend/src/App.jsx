@@ -1970,6 +1970,7 @@ function SchedulesPage({ user, showToast }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
   const [form, setForm] = useState({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [], send_to_mode: "all" });
 
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -2045,6 +2046,25 @@ function SchedulesPage({ user, showToast }) {
     } else showToast("Failed to create schedule", "error");
   };
 
+  const openEdit = (s) => {
+    setEditingSchedule(s);
+    setForm({
+      name: s.name,
+      cadence: s.cadence,
+      day_of_week: s.day_of_week || "1",
+      day_of_month: s.day_of_month || "1",
+      interval_days: s.interval_days || "7",
+      send_time: s.send_time,
+      channel: s.channel,
+      subject: s.subject || "",
+      body: s.body || "",
+      tag_filter: s.tag_filter || "",
+      customer_ids: s.customer_ids || [],
+      send_to_mode: s.customer_ids?.length > 0 ? "specific" : s.tag_filter ? "tag" : "all",
+    });
+    setShowModal(true);
+  };
+
   const toggleActive = async (s) => {
     await supabase.from("schedules").update({ active: !s.active }).eq("id", s.id);
     setSchedules(schedules.map(x => x.id === s.id ? { ...x, active: !s.active } : x));
@@ -2096,6 +2116,7 @@ function SchedulesPage({ user, showToast }) {
                   {s.active && <div style={{ fontSize: 12, color: "#185FA5", marginTop: 6 }}>Next run: {getNextRun(s).toLocaleDateString()} at {s.send_time}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+                  <button onClick={() => openEdit(s)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 10px" }}>✏️ Edit</button>
                   <button onClick={() => toggleActive(s)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 10px" }}>{s.active ? "Pause" : "Resume"}</button>
                   <button onClick={() => handleDelete(s.id)} style={{ ...btnStyle(false), fontSize: 12, padding: "5px 10px", color: "#e24b4a", borderColor: "#f7c1c1" }}>Delete</button>
                 </div>
@@ -2106,7 +2127,7 @@ function SchedulesPage({ user, showToast }) {
       )}
 
       {showModal && (
-        <Modal title="New Schedule" onClose={() => setShowModal(false)}>
+        <Modal title={editingSchedule ? "Edit Schedule" : "New Schedule"} onClose={() => { setShowModal(false); setEditingSchedule(null); setForm({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [], send_to_mode: "all" }); }}>
           <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Schedule name <span style={{ color: "#E24B4A" }}>*</span></label>
           <input style={inputStyle} placeholder="e.g. Monthly lawn reminder" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
 
