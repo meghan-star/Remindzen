@@ -2014,19 +2014,9 @@ function SchedulesPage({ user, showToast }) {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.body.trim()) return;
+    setSaving(true);
 
-    // Check schedule limit for plan
-    const planLimits = { trial: 1, starter: 2, growth: 999, pro: 999 };
-    const { data: biz } = await supabase.from("businesses").select("plan").eq("id", user.id).single();
-    const plan = biz?.plan || "trial";
-    const limit = planLimits[plan] || 1;
-    if (schedules.length >= limit) {
-      showToast(`Schedule limit reached (${limit} on ${plan} plan). Upgrade to create more.`, "error");
-      return;
-    }
-
-    const { error } = await supabase.from("schedules").insert({
-      business_id: user.id,
+    const scheduleData = {
       name: form.name,
       cadence: form.cadence,
       day_of_week: form.cadence === "weekly" ? parseInt(form.day_of_week) : null,
@@ -2036,15 +2026,39 @@ function SchedulesPage({ user, showToast }) {
       channel: form.channel,
       subject: form.subject,
       body: form.body,
-      tag_filter: form.tag_filter || null,
-      active: true,
-    });
-    if (!error) {
-      showToast("Schedule created", "success");
+      tag_filter: form.send_to_mode === "tag" ? (form.tag_filter || null) : null,
+      customer_ids: form.send_to_mode === "specific" ? form.customer_ids : [],
+    };
+
+    try {
+      if (editingSchedule) {
+        const { error } = await supabase.from("schedules").update(scheduleData).eq("id", editingSchedule.id);
+        if (!error) {
+          showToast("Schedule updated", "success");
+        } else { showToast("Failed to update schedule", "error"); return; }
+      } else {
+        // Check schedule limit for new schedules
+        const planLimits = { trial: 1, starter: 2, growth: 999, pro: 999 };
+        const { data: biz } = await supabase.from("businesses").select("plan").eq("id", user.id).single();
+        const plan = biz?.plan || "trial";
+        const limit = planLimits[plan] || 1;
+        if (schedules.length >= limit) {
+          showToast(`Schedule limit reached (${limit} on ${plan} plan). Upgrade to create more.`, "error");
+          return;
+        }
+        const { error } = await supabase.from("schedules").insert({ ...scheduleData, business_id: user.id, active: true });
+        if (!error) {
+          showToast("Schedule created", "success");
+        } else { showToast("Failed to create schedule", "error"); return; }
+      }
       setShowModal(false);
-      const { data } = await supabase.from("schedules").select("*").eq("business_id", user.id).order("created_at", { ascending: false });
-      setSchedules(data || []);
-    } else showToast("Failed to create schedule", "error");
+      setEditingSchedule(null);
+      setForm({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [], send_to_mode: "all" });
+      const { data: fresh } = await supabase.from("schedules").select("*").eq("business_id", user.id).order("created_at", { ascending: false });
+      setSchedules(fresh || []);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleTestSend = async () => {
