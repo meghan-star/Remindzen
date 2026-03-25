@@ -1970,7 +1970,7 @@ function SchedulesPage({ user, showToast }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [] });
+  const [form, setForm] = useState({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [], send_to_mode: "all" });
 
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -2110,11 +2110,42 @@ function SchedulesPage({ user, showToast }) {
           <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Schedule name <span style={{ color: "#E24B4A" }}>*</span></label>
           <input style={inputStyle} placeholder="e.g. Monthly lawn reminder" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
 
-          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send to</label>
-          <select style={{ ...inputStyle, cursor: "pointer" }} value={form.tag_filter} onChange={e => setForm({ ...form, tag_filter: e.target.value })}>
-            <option value="">All customers</option>
-            {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
-          </select>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send to <span style={{ color: "#E24B4A" }}>*</span></label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            {[["all", "All customers"], ["tag", "By tag"], ["specific", "Specific customers"]].map(([val, label]) => (
+              <button key={val} type="button" onClick={() => setForm({ ...form, send_to_mode: val, tag_filter: "", customer_ids: [] })}
+                style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: form.send_to_mode === val ? "#185FA5" : "var(--bg-hover)", color: form.send_to_mode === val ? "#fff" : "var(--text-secondary)", fontSize: 13, cursor: "pointer", fontFamily: "inherit", fontWeight: form.send_to_mode === val ? 600 : 400 }}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {form.send_to_mode === "tag" && (
+            <select style={{ ...inputStyle, cursor: "pointer" }} value={form.tag_filter} onChange={e => setForm({ ...form, tag_filter: e.target.value })}>
+              <option value="">Select a tag...</option>
+              {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+            </select>
+          )}
+
+          {form.send_to_mode === "specific" && (
+            <div style={{ border: "1px solid var(--border-mid)", borderRadius: 10, maxHeight: 180, overflowY: "auto", padding: "8px 12px", marginBottom: 12, background: "var(--bg-input)" }}>
+              {customers.length === 0 && <div style={{ fontSize: 13, color: "var(--text-hint)" }}>No customers yet</div>}
+              {customers.filter(c => !c.inactive && !c.unsubscribed).map(c => (
+                <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", cursor: "pointer", borderBottom: "0.5px solid var(--border)" }}>
+                  <input type="checkbox" checked={form.customer_ids.includes(c.id)}
+                    onChange={() => setForm({ ...form, customer_ids: form.customer_ids.includes(c.id) ? form.customer_ids.filter(x => x !== c.id) : [...form.customer_ids, c.id] })}
+                    style={{ width: 15, height: 15, cursor: "pointer" }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>{c.name}</div>
+                    {c.email && <div style={{ fontSize: 11, color: "var(--text-hint)" }}>{c.email}</div>}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+          {form.send_to_mode === "specific" && form.customer_ids.length > 0 && (
+            <div style={{ fontSize: 12, color: "#185FA5", marginBottom: 10, marginTop: -8 }}>{form.customer_ids.length} customer{form.customer_ids.length !== 1 ? "s" : ""} selected</div>
+          )}
 
           <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Cadence <span style={{ color: "#E24B4A" }}>*</span></label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.cadence} onChange={e => setForm({ ...form, cadence: e.target.value })}>

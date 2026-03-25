@@ -678,9 +678,13 @@ async function runScheduler() {
       const { allowed, remaining } = checkRateLimit(schedule.business_id);
       if (!allowed) { console.log(`[Scheduler] Skipping "${schedule.name}" — rate limit reached`); continue; }
 
-      let query = supabase.from("customers").select("*").eq("business_id", schedule.business_id).eq("unsubscribed", false);
+      let query = supabase.from("customers").select("*").eq("business_id", schedule.business_id).eq("unsubscribed", false).eq("inactive", false);
       if (schedule.tag_filter) query = query.contains("tags", [schedule.tag_filter]);
-      const { data: customers } = await query;
+      const { data: allCustomers } = await query;
+      // Filter by specific customer_ids if set
+      const customers = (schedule.customer_ids?.length > 0)
+        ? (allCustomers || []).filter(c => schedule.customer_ids.includes(c.id))
+        : (allCustomers || []);
       if (!customers?.length) continue;
 
       const toSend = customers.slice(0, remaining);
