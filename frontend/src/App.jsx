@@ -1186,7 +1186,7 @@ function TemplatesPage({ showToast }) {
             <option value="both">Email + SMS</option>
           </select>
           {(form.channel === "email" || form.channel === "both") && (
-            <input style={inputStyle} placeholder="Email subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+            <input style={inputStyle} placeholder="Email subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
           )}
           <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} placeholder="Message body... Use {name}, {date}, {time}, {amount}" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
@@ -2107,7 +2107,8 @@ function SchedulesPage({ user, showToast }) {
 
       {showModal && (
         <Modal title="New Schedule" onClose={() => setShowModal(false)}>
-          <input style={inputStyle} placeholder="Schedule name (e.g. Monthly lawn reminder) *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Schedule name <span style={{ color: "#E24B4A" }}>*</span></label>
+          <input style={inputStyle} placeholder="e.g. Monthly lawn reminder" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
 
           <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send to</label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.tag_filter} onChange={e => setForm({ ...form, tag_filter: e.target.value })}>
@@ -2115,7 +2116,7 @@ function SchedulesPage({ user, showToast }) {
             {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
           </select>
 
-          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Cadence</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Cadence <span style={{ color: "#E24B4A" }}>*</span></label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.cadence} onChange={e => setForm({ ...form, cadence: e.target.value })}>
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -2137,10 +2138,10 @@ function SchedulesPage({ user, showToast }) {
             </select>
           )}
 
-          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send time</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Send time <span style={{ color: "#E24B4A" }}>*</span></label>
           <input style={inputStyle} type="time" value={form.send_time} onChange={e => setForm({ ...form, send_time: e.target.value })} />
 
-          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Channel</label>
+          <label style={{ fontSize: 13, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Channel <span style={{ color: "#E24B4A" }}>*</span></label>
           <select style={{ ...inputStyle, cursor: "pointer" }} value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })}>
             <option value="preferred">Each customer's preferred channel</option>
             <option value="email">Email only</option>
@@ -2149,10 +2150,11 @@ function SchedulesPage({ user, showToast }) {
           </select>
 
           {(form.channel === "email" || form.channel === "both" || form.channel === "preferred") && (
-            <input style={inputStyle} placeholder="Email subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
+            <input style={inputStyle} placeholder="Email subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
           )}
-          <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} placeholder="Message body... Use {name}, {date}, {time}, {amount}" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
+          <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} placeholder="Message body * — Use {name}, {date}, {time}, {amount}" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
 
+          <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 8 }}><span style={{ color: "#E24B4A" }}>*</span> Required field</div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
             <button onClick={() => setShowModal(false)} style={btnStyle(false)}>Cancel</button>
             <button onClick={handleSave} style={btnStyle(true)}>Create Schedule</button>
