@@ -1971,6 +1971,7 @@ function SchedulesPage({ user, showToast }) {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [sendingTest, setSendingTest] = useState(false);
   const [form, setForm] = useState({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [], send_to_mode: "all" });
 
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -2044,6 +2045,33 @@ function SchedulesPage({ user, showToast }) {
       const { data } = await supabase.from("schedules").select("*").eq("business_id", user.id).order("created_at", { ascending: false });
       setSchedules(data || []);
     } else showToast("Failed to create schedule", "error");
+  };
+
+  const handleTestSend = async () => {
+    if (!form.body.trim()) { showToast("Add a message body first", "error"); return; }
+    setSendingTest(true);
+    try {
+      const { data: biz } = await supabase.from("businesses").select("name, email").eq("id", user.id).single();
+      const testCustomer = { id: "test", name: biz?.name || "Test", email: biz?.email || user.email, phone: "", preferred_channel: "email" };
+      const res = await fetch(`${API}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customers: [testCustomer],
+          subject: form.subject || "Test message",
+          body: form.body,
+          vars: { date: new Date().toLocaleDateString(), time: form.send_time },
+          businessName: biz?.name || "Remind Zen",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) showToast("Test email sent to " + (biz?.email || user.email), "success");
+      else showToast("Test failed: " + (data.error || "Unknown error"), "error");
+    } catch (e) {
+      showToast("Test failed", "error");
+    } finally {
+      setSendingTest(false);
+    }
   };
 
   const openEdit = (s) => {
