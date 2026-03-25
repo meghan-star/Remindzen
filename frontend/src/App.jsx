@@ -2254,10 +2254,13 @@ function SchedulesPage({ user, showToast }) {
           )}
           <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} placeholder="Message body * — Use {name}, {date}, {time}, {amount}" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
 
-          <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 8 }}><span style={{ color: "#E24B4A" }}>*</span> Required field</div>
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
-            <button onClick={() => setShowModal(false)} style={btnStyle(false)}>Cancel</button>
-            <button onClick={handleSave} style={btnStyle(true)}>Create Schedule</button>
+          <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 12 }}><span style={{ color: "#E24B4A" }}>*</span> Required field</div>
+          <button onClick={handleTestSend} disabled={sendingTest} style={{ ...btnStyle(false), width: "100%", marginBottom: 8 }}>
+            {sendingTest ? "Sending..." : "📧 Send test email to myself"}
+          </button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+            <button onClick={() => { setShowModal(false); setEditingSchedule(null); }} style={btnStyle(false)}>Cancel</button>
+            <button onClick={handleSave} disabled={saving} style={btnStyle(true)}>{editingSchedule ? "Save changes" : "Create Schedule"}</button>
           </div>
         </Modal>
       )}
