@@ -1972,6 +1972,7 @@ function SchedulesPage({ user, showToast }) {
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [sendingTest, setSendingTest] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", cadence: "weekly", day_of_week: "1", day_of_month: "1", interval_days: "7", send_time: "09:00", channel: "preferred", subject: "", body: "", tag_filter: "", customer_ids: [], send_to_mode: "all" });
 
   const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
