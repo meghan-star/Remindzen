@@ -2149,6 +2149,26 @@ function SchedulesPage({ user, showToast }) {
             <option value="both">Email + SMS</option>
           </select>
 
+          {/* Template picker */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>Quick templates <span style={{ fontSize: 11, color: "var(--text-hint)" }}>(optional — fills subject & message)</span></div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {TEMPLATES.filter(t => {
+                if (form.channel === "sms") return t.channel === "sms" || t.channel === "both";
+                if (form.channel === "email") return t.channel === "email" || t.channel === "both";
+                return true;
+              }).map(t => (
+                <button key={t.id} type="button" onClick={() => {
+                  setForm({ ...form, subject: t.subject || form.subject, body: t.body });
+                }} style={{ padding: "5px 12px", borderRadius: 8, border: "1.5px solid var(--border-mid)", background: "var(--bg-hover)", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#185FA5"; e.currentTarget.style.color = "#185FA5"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-mid)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {(form.channel === "email" || form.channel === "both" || form.channel === "preferred") && (
             <input style={inputStyle} placeholder="Email subject *" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
           )}
