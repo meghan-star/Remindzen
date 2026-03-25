@@ -8,8 +8,59 @@ const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type", "x-admin-uid", "x-business-id"] }));
+// Simple in-memory rate limiter
+const requestCounts = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 60; // 60 requests per minute per IP
+
+function rateLimiter(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const entry = requestCounts.get(ip) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + RATE_LIMIT_WINDOW;
+  }
+  entry.count++;
+  requestCounts.set(ip, entry);
+  if (entry.count > RATE_LIMIT_MAX) {
+    return res.status(429).json({ error: "Too many requests — please slow down." });
+  }
+  next();
+}
+
+// Apply rate limiter to all routes except webhook
+app.use((req, res, next) => {
+  if (req.path === "/billing/webhook") return next();
+  rateLimiter(req, res, next);
+});
+
+const allowedOrigins = [
+  "https://app.remindzen.com",
+  "https://remindzen.com",
+  "http://localhost:5173", // dev only
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "x-admin-uid", "x-business-id"],
+}));
 app.options("*", cors());
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
 app.use((req, res, next) => { if (req.path === "/billing/webhook") next(); else express.json()(req, res, next); });
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
