@@ -2671,8 +2671,9 @@ function LegalPage() {
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>1. Use of the Service</h3>
           <p>Remind Zen provides a customer reminder platform that allows businesses to send email and SMS messages to their customers. You are responsible for all activity that occurs under your account. You must not use the Service for any unlawful purpose or in violation of any regulations, including but not limited to the CAN-SPAM Act and the Telephone Consumer Protection Act (TCPA).</p>
 
-          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>2. Customer consent</h3>
+          <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>2. Customer consent & SMS compliance</h3>
           <p>You are solely responsible for ensuring that your customers have given proper consent to receive communications from you before sending them messages through our Service. You must maintain records of customer consent and provide opt-out mechanisms in all communications. We reserve the right to suspend accounts that violate consent requirements.</p>
+          <p style={{ marginTop: 12 }}>For SMS messages specifically: By using the SMS features of our Service, you confirm that each recipient has provided express written or verbal consent to receive automated text messages from your business. All SMS messages sent through Remind Zen must include opt-out instructions. Message and data rates may apply to your customers. Customers can reply STOP to unsubscribe from SMS messages at any time, and HELP for assistance. You must honor all opt-out requests immediately.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>3. Prohibited content</h3>
           <p>You may not use the Service to send spam, unsolicited messages, misleading content, illegal content, or any messages that violate the rights of third parties. We reserve the right to remove content and suspend accounts that violate these policies without notice.</p>
