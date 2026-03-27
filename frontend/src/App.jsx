@@ -241,6 +241,12 @@ function AuthScreen({ onAuth }) {
           const trialEnd = new Date(Date.now() + trialDays * 86400000).toISOString();
           await supabase.from("businesses").insert({ id: data.user.id, name: form.name, email: form.email, trial_ends_at: trialEnd, plan: lockedPlan || "trial", referred_by: referredBy });
           if (form.inviteCode?.trim()) localStorage.setItem(`invite_code_${data.user.id}`, form.inviteCode.trim().toUpperCase());
+          // Send welcome email (fire and forget — don't block signup on failure)
+          fetch(`${API}/welcome`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ businessName: form.name, email: form.email }),
+          }).catch(() => {});
           onAuth(data.user);
         }
       } else {
@@ -605,6 +611,7 @@ function CustomersPage({ user, showToast }) {
   };
 
   const handleDelete = async (id, name) => {
+    if (!window.confirm(`Remove ${name} from your customer list? This cannot be undone.`)) return;
     const { error } = await supabase.from("customers").delete().eq("id", id);
     if (!error) { showToast(`${name} removed`, "success"); loadCustomers(); }
   };
@@ -872,7 +879,12 @@ function SendPage({ user, business, showToast }) {
   };
 
   const resolveBody = (body, name = "(customer name)") =>
-    (body || "").replace(/{name}/g, name).replace(/{date}/g, vars.date || "{date}").replace(/{time}/g, vars.time || "{time}").replace(/{amount}/g, vars.amount || "{amount}");
+    (body || "")
+      .replace(/{business_name}/g, business?.name || "{business_name}")
+      .replace(/{name}/g, name)
+      .replace(/{date}/g, vars.date || "{date}")
+      .replace(/{time}/g, vars.time || "{time}")
+      .replace(/{amount}/g, vars.amount || "{amount}");
 
   const handleSendTest = async () => {
     if (!msg.body.trim()) return;
@@ -1079,7 +1091,7 @@ function SendPage({ user, business, showToast }) {
             <p style={{ margin: "0 0 12px", fontSize: 14, color: "var(--text-muted)" }}>
               Sending to {selected.length} customer{selected.length > 1 ? "s" : ""} · {usePreferred ? "using each customer's preferred channel" : overrideChannel === "both" ? "Email + SMS" : overrideChannel.toUpperCase()}
             </p>
-            {msg.subject && <p style={{ margin: "0 0 8px", fontSize: 14 }}><strong>Subject:</strong> {msg.subject}</p>}
+            {msg.subject && <p style={{ margin: "0 0 8px", fontSize: 14 }}><strong>Subject:</strong> {msg.subject.replace(/{business_name}/g, business?.name || "{business_name}").replace(/{name}/g, customers.filter(c => selected.includes(c.id))[0]?.name || "{name}")}</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {customers.filter(c => selected.includes(c.id)).slice(0, 3).map(c => (
                 <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "12px 16px", border: "1px solid #eee", fontSize: 13, lineHeight: 1.7, color: "#333" }}>
@@ -2506,7 +2518,7 @@ function ReferralSection({ userId }) {
   }, []);
 
   const loadReferral = async () => {
-    const { data } = await supabase.from("referral_codes").select("*").eq("business_id", userId).single();
+    const { data } = await supabase.from("referral_codes").select("*").eq("business_id", userId).maybeSingle();
     if (data) {
       setReferralCode(data);
       const { count } = await supabase.from("businesses").select("*", { count: "exact", head: true }).eq("referred_by", data.code);
@@ -2596,7 +2608,7 @@ function ContactPage({ user, business, showToast }) {
       </div>
 
       <div style={{ background: "var(--bg-hover)", borderRadius: 12, padding: "20px 24px", fontSize: 13, color: "var(--text-hint)", lineHeight: 1.7 }}>
-        <strong style={{ color: "var(--text-muted)" }}>Remind Zen LLC</strong> · Ventura, CA · <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a>
+        <strong style={{ color: "var(--text-muted)" }}>Remind Zen</strong> · Ventura, CA · <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a>
       </div>
     </div>
   );
@@ -2666,7 +2678,7 @@ function LegalPage() {
           <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Terms of Service</h2>
           <p style={{ margin: "0 0 24px", color: "var(--text-hint)", fontSize: 13 }}>Last updated: {today}</p>
 
-          <p>These Terms of Service ("Terms") govern your use of the Remind Zen platform ("Service") operated by Remind Zen LLC ("us", "we", or "our"). By accessing or using our Service, you agree to be bound by these Terms.</p>
+          <p>These Terms of Service ("Terms") govern your use of the Remind Zen platform ("Service") operated by Remind Zen ("us", "we", or "our"). By accessing or using our Service, you agree to be bound by these Terms.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>1. Use of the Service</h3>
           <p>Remind Zen provides a customer reminder platform that allows businesses to send email and SMS messages to their customers. You are responsible for all activity that occurs under your account. You must not use the Service for any unlawful purpose or in violation of any regulations, including but not limited to the CAN-SPAM Act and the Telephone Consumer Protection Act (TCPA).</p>
@@ -2690,7 +2702,7 @@ function LegalPage() {
           <p>We strive to maintain reliable service but do not guarantee uninterrupted or error-free operation. We reserve the right to modify, suspend, or discontinue the Service at any time with reasonable notice.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>7. Limitation of liability</h3>
-          <p>To the maximum extent permitted by law, Remind Zen LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service. Our total liability to you shall not exceed the amounts paid by you to us in the three months preceding the claim.</p>
+          <p>To the maximum extent permitted by law, Remind Zen shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service. Our total liability to you shall not exceed the amounts paid by you to us in the three months preceding the claim.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>8. Changes to terms</h3>
           <p>We reserve the right to update these Terms at any time. We will notify you of significant changes by email or by posting a notice within the Service. Your continued use of the Service after changes constitutes your acceptance of the new Terms.</p>
@@ -2705,7 +2717,7 @@ function LegalPage() {
           <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Privacy Policy</h2>
           <p style={{ margin: "0 0 24px", color: "var(--text-hint)", fontSize: 13 }}>Last updated: {today}</p>
 
-          <p>Remind Zen LLC ("we", "us", or "our") operates the Remind Zen platform. This Privacy Policy explains how we collect, use, and protect information when you use our Service.</p>
+          <p>Remind Zen ("we", "us", or "our") operates the Remind Zen platform. This Privacy Policy explains how we collect, use, and protect information when you use our Service.</p>
 
           <div style={{ background: "var(--bg-hover)", borderRadius: 10, padding: "14px 18px", marginBottom: 20, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Our commitments to you:</div>
@@ -2737,7 +2749,7 @@ function LegalPage() {
           <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at the address below. California residents may have additional rights under the CCPA.</p>
 
           <h3 style={{ margin: "24px 0 8px", fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>9. Contact</h3>
-          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a> or write to Remind Zen LLC, Ventura, CA.</p>
+          <p style={{ margin: 0 }}>For privacy-related questions, contact us at <a href="mailto:hello@remindzen.com" style={{ color: "#185FA5" }}>hello@remindzen.com</a> or write to Remind Zen, Ventura, CA.</p>
         </div>
       )}
     </div>
