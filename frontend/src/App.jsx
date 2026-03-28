@@ -2060,7 +2060,11 @@ function SchedulesPage({ user, showToast }) {
         const { error } = await supabase.from("schedules").update(scheduleData).eq("id", editingSchedule.id);
         if (!error) {
           showToast("Schedule updated", "success");
-        } else { showToast("Failed to update schedule", "error"); return; }
+        } else {
+          console.error("Schedule update error:", error);
+          showToast("Failed to update schedule: " + (error.message || error.details || "Unknown error"), "error");
+          return;
+        }
       } else {
         // Check schedule limit for new schedules
         const planLimits = { trial: 1, starter: 2, growth: 999, pro: 999 };
@@ -2074,7 +2078,11 @@ function SchedulesPage({ user, showToast }) {
         const { error } = await supabase.from("schedules").insert({ ...scheduleData, business_id: user.id, active: true });
         if (!error) {
           showToast("Schedule created", "success");
-        } else { showToast("Failed to create schedule", "error"); return; }
+        } else {
+          console.error("Schedule insert error:", error);
+          showToast("Failed to create schedule: " + (error.message || error.details || "Unknown error"), "error");
+          return;
+        }
       }
       setShowModal(false);
       setEditingSchedule(null);
