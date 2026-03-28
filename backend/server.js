@@ -97,10 +97,9 @@ function incrementRateLimit(businessId, amount = 1) {
 
 // ── Helpers ──
 
-function resolveVars(text, customer, vars = {}, businessName = "") {
+function resolveVars(text, customer, vars = {}) {
   if (!text) return "";
   return text
-    .replace(/{business_name}/g, businessName || "")
     .replace(/{name}/g, customer.name || "")
     .replace(/{date}/g, vars.date || "")
     .replace(/{time}/g, vars.time || "")
@@ -128,12 +127,12 @@ function buildEmailHtml(body, businessName) {
 
 async function sendEmail(customer, subject, body, vars, businessName) {
   if (!customer.email) return { ok: false, error: "No email address" };
-  const resolvedBody = resolveVars(body, customer, vars, businessName);
+  const resolvedBody = resolveVars(body, customer, vars);
   try {
     await sgMail.send({
       to: customer.email,
       from: process.env.FROM_EMAIL,
-      subject: resolveVars(subject, customer, vars, businessName),
+      subject: resolveVars(subject, customer, vars),
       text: resolvedBody + `\n\n— Sent by Remind Zen on behalf of ${businessName}. Reply STOP to unsubscribe.`,
       html: buildEmailHtml(resolvedBody, businessName),
     });
@@ -145,7 +144,7 @@ async function sendEmail(customer, subject, body, vars, businessName) {
 
 async function sendSMS(customer, body, vars, businessName) {
   if (!customer.phone) return { ok: false, error: "No phone number" };
-  const resolvedBody = resolveVars(body, customer, vars, businessName);
+  const resolvedBody = resolveVars(body, customer, vars);
   try {
     await twilioClient.messages.create({
       body: `${resolvedBody}\n\nReply STOP to unsubscribe. Sent by Remind Zen for ${businessName}.`,
@@ -169,7 +168,7 @@ const PLANS = {
     emailOverage: process.env.PRICE_STARTER_EMAIL,
     smsOverage: process.env.PRICE_STARTER_SMS,
     messageLimit: 150,
-    customerLimit: 75,
+    customerLimit: 100,
     scheduleLimit: 2,
   },
   growth: {
@@ -374,7 +373,7 @@ app.get("/billing/status", async (req, res) => {
       trialDaysLeft,
       messagesUsed: biz?.messages_used_this_month || 0,
       messageLimit: plan?.messageLimit || 50,
-      customerLimit: plan?.customerLimit || 10,
+      customerLimit: plan?.customerLimit || 25,
       scheduleLimit: plan?.scheduleLimit || 1,
       stripeCustomerId: biz?.stripe_customer_id,
     });
@@ -592,150 +591,6 @@ app.post("/account/delete", async (req, res) => {
     }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── Welcome Email ──
-
-app.post("/welcome", async (req, res) => {
-  const { businessName, email } = req.body;
-  if (!email) return res.status(400).json({ error: "Missing email" });
-
-  const name = businessName || "there";
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Welcome to Remind Zen</title>
-</head>
-<body style="margin:0;padding:0;background:#f7f8fa;font-family:'Segoe UI',Arial,sans-serif;">
-<div style="max-width:580px;margin:32px auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e8eaed;">
-
-  <!-- Header -->
-  <div style="background:#185FA5;padding:32px 40px;text-align:center;">
-    <img src="https://remindzen.com/logo.png" alt="Remind Zen" style="height:52px;margin-bottom:12px;"/>
-    <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">Welcome to Remind Zen 🧘</h1>
-    <p style="margin:8px 0 0;color:#cce0f5;font-size:14px;">Your 14-day free trial has started</p>
-  </div>
-
-  <!-- Body -->
-  <div style="padding:36px 40px;">
-    <p style="margin:0 0 20px;font-size:16px;color:#1a1a1a;line-height:1.6;">Hi ${name},</p>
-    <p style="margin:0 0 20px;font-size:15px;color:#444;line-height:1.7;">
-      Thank you for joining Remind Zen! You're all set to start sending automated appointment reminders to your customers — no awkward phone calls, no no-shows.
-    </p>
-    <p style="margin:0 0 28px;font-size:15px;color:#444;line-height:1.7;">
-      Here's how to get up and running in the next 5 minutes:
-    </p>
-
-    <!-- Steps -->
-    <div style="background:#f0f6ff;border-radius:10px;padding:24px 28px;margin-bottom:28px;">
-      <div style="display:flex;align-items:flex-start;margin-bottom:20px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:#185FA5;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:14px;line-height:28px;text-align:center;">1</div>
-        <div>
-          <div style="font-weight:600;font-size:14px;color:#1a1a1a;margin-bottom:3px;">Add your customers</div>
-          <div style="font-size:13px;color:#555;line-height:1.6;">Go to the <strong>Customers</strong> tab. Add them one by one, or import a CSV spreadsheet in seconds.</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;margin-bottom:20px;">
-        <div style="width:28px;height:28px;border-radius:50%;background:#185FA5;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:14px;line-height:28px;text-align:center;">2</div>
-        <div>
-          <div style="font-weight:600;font-size:14px;color:#1a1a1a;margin-bottom:3px;">Send your first reminder</div>
-          <div style="font-size:13px;color:#555;line-height:1.6;">Go to <strong>Send Reminder</strong>, pick a customer, choose a ready-made template, and hit send. Takes about 30 seconds.</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;">
-        <div style="width:28px;height:28px;border-radius:50%;background:#185FA5;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:14px;line-height:28px;text-align:center;">3</div>
-        <div>
-          <div style="font-weight:600;font-size:14px;color:#1a1a1a;margin-bottom:3px;">Set up an automatic schedule</div>
-          <div style="font-size:13px;color:#555;line-height:1.6;">Go to <strong>Schedules</strong> to create a recurring reminder — daily, weekly, or monthly. Set it once and forget it.</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tips -->
-    <div style="margin-bottom:28px;">
-      <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#1a1a1a;">💡 A few quick tips:</p>
-      <ul style="margin:0;padding-left:20px;font-size:14px;color:#444;line-height:1.9;">
-        <li>Use <strong>{name}</strong> in your message to personalize each reminder automatically</li>
-        <li>Use <strong>{date}</strong> and <strong>{time}</strong> to auto-fill appointment details</li>
-        <li>Each customer can have their own preferred channel — email, SMS, or both</li>
-        <li>Check <strong>Send History</strong> any time to see delivery status</li>
-      </ul>
-    </div>
-
-    <!-- CTA -->
-    <div style="text-align:center;margin-bottom:32px;">
-      <a href="https://app.remindzen.com" style="display:inline-block;background:#185FA5;color:#ffffff;font-weight:600;font-size:15px;padding:14px 36px;border-radius:8px;text-decoration:none;letter-spacing:0.2px;">Open Remind Zen →</a>
-    </div>
-
-    <!-- Help -->
-    <div style="background:#f7f8fa;border-radius:10px;padding:20px 24px;margin-bottom:4px;">
-      <p style="margin:0 0 6px;font-size:14px;font-weight:600;color:#1a1a1a;">🙋 Need help?</p>
-      <p style="margin:0;font-size:13px;color:#555;line-height:1.7;">
-        Just reply to this email — you'll reach me directly. I typically respond within one business day.<br/>
-        You can also find answers to common questions in the <strong>Contact</strong> tab inside the app.
-      </p>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div style="background:#f0f6ff;padding:20px 40px;border-top:1px solid #e0ecf8;text-align:center;">
-    <p style="margin:0 0 6px;font-size:13px;color:#555;line-height:1.6;">
-      — Meghan, Founder of Remind Zen<br/>
-      <a href="mailto:hello@remindzen.com" style="color:#185FA5;text-decoration:none;">hello@remindzen.com</a> · Ventura, CA
-    </p>
-    <p style="margin:10px 0 0;font-size:11px;color:#aaa;">
-      You're receiving this because you signed up for a Remind Zen account.<br/>
-      <a href="https://remindzen.com" style="color:#aaa;">remindzen.com</a>
-    </p>
-  </div>
-
-</div>
-</body>
-</html>`;
-
-  const text = `Hi ${name},
-
-Welcome to Remind Zen! Your 14-day free trial has started.
-
-Here's how to get up and running in 5 minutes:
-
-1. Add your customers — Go to the Customers tab. Add them one by one or import a CSV.
-
-2. Send your first reminder — Go to Send Reminder, pick a customer, choose a template, and hit send. Takes about 30 seconds.
-
-3. Set up an automatic schedule — Go to Schedules to create a recurring reminder. Set it once and forget it.
-
-A few quick tips:
-- Use {name} in your message to personalize each reminder automatically
-- Use {date} and {time} to auto-fill appointment details
-- Each customer can have their own preferred channel — email, SMS, or both
-- Check Send History any time to see delivery status
-
-Open Remind Zen: https://app.remindzen.com
-
-Need help? Just reply to this email — you'll reach me directly.
-
-— Meghan, Founder of Remind Zen
-hello@remindzen.com · Ventura, CA`;
-
-  try {
-    await sgMail.send({
-      to: email,
-      from: { email: process.env.FROM_EMAIL, name: "Meghan at Remind Zen" },
-      replyTo: "hello@remindzen.com",
-      subject: "Welcome to Remind Zen 🧘 — here's how to get started",
-      text,
-      html,
-    });
-    console.log(`[Welcome] Sent to ${email}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("[Welcome] Email failed:", err.message, err?.response?.body?.errors);
-    res.json({ success: false, error: err.message });
-  }
 });
 
 // ── Admin Routes ──

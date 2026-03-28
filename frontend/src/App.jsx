@@ -549,10 +549,10 @@ function CustomersPage({ user, showToast }) {
 
     // Check customer limit for new customers
     if (!editingCustomer) {
-      const planLimits = { trial: 10, starter: 75, growth: 300, pro: 999999 };
+      const planLimits = { trial: 25, starter: 100, growth: 300, pro: 999999 };
       const { data: biz } = await supabase.from("businesses").select("plan, trial_ends_at").eq("id", user.id).single();
       const plan = biz?.plan || "trial";
-      const limit = planLimits[plan] || 10;
+      const limit = planLimits[plan] || 25;
       if (customers.length >= limit) {
         showToast(`Customer limit reached (${limit} on ${plan} plan). Upgrade to add more.`, "error");
         return;
@@ -2392,7 +2392,7 @@ function BillingPage({ user, business }) {
   };
 
   const plans = [
-    { key: "starter", name: "Starter", monthlyPrice: 14, annualPrice: 140, features: ["75 customers", "150 messages/month", "Email + SMS", "2 schedules", "Templates", "14-day free trial"] },
+    { key: "starter", name: "Starter", monthlyPrice: 14, annualPrice: 140, features: ["100 customers", "150 messages/month", "Email + SMS", "2 schedules", "Templates", "14-day free trial"] },
     { key: "growth", name: "Growth", monthlyPrice: 29, annualPrice: 290, features: ["300 customers", "500 messages/month", "Email + SMS", "Unlimited schedules", "Tags & groups", "CSV import/export", "Analytics", "14-day free trial"], popular: true },
     { key: "pro", name: "Pro", monthlyPrice: 59, annualPrice: 590, features: ["Unlimited customers", "2,000 messages/month", "Everything in Growth", "Priority support", "Calendar integration*", "Two-way SMS*", "14-day free trial"] },
   ];
