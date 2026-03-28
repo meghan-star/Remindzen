@@ -106,21 +106,24 @@ function resolveVars(text, customer, vars = {}) {
     .replace(/{amount}/g, vars.amount || "");
 }
 
-function buildEmailHtml(body, businessName) {
+function buildEmailHtml(body, businessName, unsubscribeUrl) {
   const escaped = body.replace(/\n/g, "<br/>");
+  const unsubLine = unsubscribeUrl
+    ? `<div class="footer-unsub">Don't want these reminders? <a href="${unsubscribeUrl}" style="color:#bbb;">Unsubscribe</a></div>`
+    : `<div class="footer-unsub">To unsubscribe, reply STOP or contact ${businessName} directly.</div>`;
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/><style>
     body{font-family:'Segoe UI',Arial,sans-serif;background:#f7f8fa;margin:0;padding:0}
     .wrapper{max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #f0f0f0}
     .body{padding:32px 36px;font-size:15px;line-height:1.7;color:#333}
     .footer{background:#f7f8fa;padding:16px 36px;border-top:1px solid #f0f0f0;text-align:center}
     .footer-brand{font-size:12px;color:#aaa}.footer-brand a{color:#185FA5;text-decoration:none}
-    .footer-unsub{font-size:11px;color:#bbb;margin-top:4px}
+    .footer-unsub{font-size:11px;color:#bbb;margin-top:4px}.footer-unsub a{color:#bbb;}
   </style></head><body>
   <div class="wrapper">
     <div class="body">${escaped}</div>
     <div class="footer">
       <div class="footer-brand">Sent by <a href="https://app.remindzen.com">Remind Zen</a> on behalf of ${businessName}</div>
-      <div class="footer-unsub">To unsubscribe from these reminders, reply STOP or contact ${businessName} directly.</div>
+      ${unsubLine}
     </div>
   </div></body></html>`;
 }
@@ -128,13 +131,16 @@ function buildEmailHtml(body, businessName) {
 async function sendEmail(customer, subject, body, vars, businessName) {
   if (!customer.email) return { ok: false, error: "No email address" };
   const resolvedBody = resolveVars(body, customer, vars);
+  const unsubscribeUrl = customer.id && customer.id !== "test"
+    ? `https://remindzen-backend-jg5k.onrender.com/unsubscribe?id=${customer.id}`
+    : null;
   try {
     await sgMail.send({
       to: customer.email,
       from: process.env.FROM_EMAIL,
       subject: resolveVars(subject, customer, vars),
-      text: resolvedBody + `\n\n— Sent by Remind Zen on behalf of ${businessName}. Reply STOP to unsubscribe.`,
-      html: buildEmailHtml(resolvedBody, businessName),
+      text: resolvedBody + `\n\n— Sent by Remind Zen on behalf of ${businessName}. To unsubscribe: ${unsubscribeUrl || "reply STOP"}`,
+      html: buildEmailHtml(resolvedBody, businessName, unsubscribeUrl),
     });
     return { ok: true };
   } catch (err) {
@@ -591,6 +597,26 @@ app.post("/account/delete", async (req, res) => {
     }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── One-click unsubscribe ──
+app.get("/unsubscribe", async (req, res) => {
+  const { id } = req.query;
+  if (!id) return res.status(400).send("Missing customer ID");
+  try {
+    const { error } = await supabase.from("customers").update({ unsubscribed: true }).eq("id", id);
+    if (error) throw error;
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Unsubscribed</title>
+    <style>body{font-family:'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f7f8fa;}
+    .box{background:#fff;border-radius:12px;padding:40px 48px;text-align:center;border:1px solid #f0f0f0;max-width:400px;}
+    h2{color:#1a1a1a;margin:0 0 12px;}p{color:#666;font-size:15px;margin:0;line-height:1.6;}</style></head>
+    <body><div class="box"><div style="font-size:36px;margin-bottom:16px;">✓</div>
+    <h2>You've been unsubscribed</h2>
+    <p>You won't receive any more reminders at this email address. If this was a mistake, contact the business directly.</p>
+    </div></body></html>`);
+  } catch (e) {
+    res.status(500).send("Something went wrong. Please contact support.");
+  }
 });
 
 // ── Admin Routes ──

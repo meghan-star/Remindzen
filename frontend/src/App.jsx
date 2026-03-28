@@ -523,12 +523,26 @@ function CustomersPage({ user, showToast }) {
   const [tagInput, setTagInput] = useState("");
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", preferred_channel: "email", unsubscribed: false, sms_consent: false, sms_consent_at: null, tags: [], next_appointment: "", inactive: false });
 
+  const [lastReminded, setLastReminded] = useState({});
+
   useEffect(() => { loadCustomers(); }, []);
 
   const loadCustomers = async () => {
     setLoading(true);
     const { data } = await supabase.from("customers").select("*").eq("business_id", user.id).order("name");
     setCustomers(data || []);
+    // Fetch last send date per customer
+    const { data: history } = await supabase
+      .from("send_history")
+      .select("customer_id, sent_at")
+      .eq("business_id", user.id)
+      .eq("status", "sent")
+      .order("sent_at", { ascending: false });
+    if (history) {
+      const map = {};
+      history.forEach(h => { if (!map[h.customer_id]) map[h.customer_id] = h.sent_at; });
+      setLastReminded(map);
+    }
     setLoading(false);
   };
 
@@ -625,38 +639,57 @@ function CustomersPage({ user, showToast }) {
     loadCustomers();
   };
 
+  const [csvPreview, setCsvPreview] = useState(null); // { headers, rows, mapping }
+
   const handleCSVImport = async (file) => {
     if (!file) return;
     const text = await file.text();
     const lines = text.trim().split("\n");
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ""));
+    const rawHeaders = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
     const rows = lines.slice(1).map(line => {
       const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
       const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      rawHeaders.forEach((h, i) => { obj[h] = vals[i] || ""; });
       return obj;
-    }).filter(r => r.name || r.full_name);
+    }).filter(r => Object.values(r).some(v => v));
 
+    // Auto-detect mapping
+    const autoMap = (candidates) => {
+      const lower = rawHeaders.map(h => h.toLowerCase().replace(/\s/g, "_"));
+      return candidates.find(c => lower.includes(c)) ? rawHeaders[lower.findIndex(h => candidates.includes(h))] : "";
+    };
+    const mapping = {
+      name: autoMap(["name", "full_name", "customer_name", "client_name"]),
+      email: autoMap(["email", "email_address", "e_mail"]),
+      phone: autoMap(["phone", "phone_number", "mobile", "cell"]),
+      notes: autoMap(["notes", "note", "comments"]),
+      preferred_channel: autoMap(["preferred_channel", "channel"]),
+    };
+    setCsvPreview({ headers: rawHeaders, rows, mapping });
+  };
+
+  const commitCSVImport = async () => {
+    if (!csvPreview) return;
+    const { rows, mapping } = csvPreview;
     let added = 0, updated = 0, skipped = 0;
     for (const row of rows) {
-      const name = row.name || row.full_name || row.customer_name || "";
-      const email = row.email || row.email_address || "";
-      const phone = row.phone || row.phone_number || row.mobile || "";
-      const notes = row.notes || row.note || "";
-      const preferred_channel = row.preferred_channel || row.channel || "email";
-      if (!name) { skipped++; continue; }
-
+      const name = mapping.name ? row[mapping.name] : "";
+      const email = mapping.email ? row[mapping.email] : "";
+      const phone = mapping.phone ? row[mapping.phone] : "";
+      const notes = mapping.notes ? row[mapping.notes] : "";
+      const preferred_channel = (mapping.preferred_channel ? row[mapping.preferred_channel] : "") || "email";
+      if (!name.trim()) { skipped++; continue; }
       if (email) {
         const { data: existing } = await supabase.from("customers").select("id").eq("business_id", user.id).eq("email", email).single();
         if (existing) {
           await supabase.from("customers").update({ name, phone, notes, preferred_channel }).eq("id", existing.id);
-          updated++;
-          continue;
+          updated++; continue;
         }
       }
       await supabase.from("customers").insert({ name, email, phone, notes, preferred_channel, business_id: user.id });
       added++;
     }
+    setCsvPreview(null);
     loadCustomers();
     showToast(`Import complete: ${added} added, ${updated} updated${skipped > 0 ? ", " + skipped + " skipped" : ""}`, "success");
   };
@@ -780,6 +813,11 @@ function CustomersPage({ user, showToast }) {
                     ))}
                   </div>
                 )}
+                {lastReminded[c.id] && (
+                  <div style={{ fontSize: 11, color: "var(--text-hint)", marginTop: 4 }}>
+                    Last reminded: {new Date(lastReminded[c.id]).toLocaleDateString()}
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 {c.inactive && <span style={{ fontSize: 11, background: "#F1EFE8", color: "#5F5E5A", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>Inactive</span>}
@@ -791,6 +829,49 @@ function CustomersPage({ user, showToast }) {
             </div>
           ))}
         </div>
+      )}
+
+      {csvPreview && (
+        <Modal title="Map CSV Columns" onClose={() => setCsvPreview(null)}>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+            Your CSV has {csvPreview.rows.length} rows. Match your column headers to the right fields below.
+          </p>
+          {[
+            { field: "name", label: "Customer name *" },
+            { field: "email", label: "Email address" },
+            { field: "phone", label: "Phone number" },
+            { field: "notes", label: "Notes" },
+            { field: "preferred_channel", label: "Preferred channel" },
+          ].map(({ field, label }) => (
+            <div key={field} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 140, fontSize: 13, color: "var(--text-muted)", flexShrink: 0 }}>{label}</div>
+              <select
+                style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                value={csvPreview.mapping[field] || ""}
+                onChange={e => setCsvPreview(prev => ({ ...prev, mapping: { ...prev.mapping, [field]: e.target.value } }))}
+              >
+                <option value="">— skip —</option>
+                {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+          ))}
+          <div style={{ background: "var(--bg-hover)", borderRadius: 8, padding: "10px 14px", marginTop: 8, marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: "var(--text-hint)", marginBottom: 6, fontWeight: 500 }}>Preview (first 3 rows)</div>
+            {csvPreview.rows.slice(0, 3).map((row, i) => (
+              <div key={i} style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
+                {csvPreview.mapping.name ? <strong>{row[csvPreview.mapping.name]}</strong> : <em>no name</em>}
+                {csvPreview.mapping.email && row[csvPreview.mapping.email] ? ` · ${row[csvPreview.mapping.email]}` : ""}
+                {csvPreview.mapping.phone && row[csvPreview.mapping.phone] ? ` · ${row[csvPreview.mapping.phone]}` : ""}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button onClick={() => setCsvPreview(null)} style={btnStyle(false)}>Cancel</button>
+            <button onClick={commitCSVImport} disabled={!csvPreview.mapping.name} style={{ ...btnStyle(true), opacity: csvPreview.mapping.name ? 1 : 0.4 }}>
+              Import {csvPreview.rows.length} rows →
+            </button>
+          </div>
+        </Modal>
       )}
 
       {showModal && (
