@@ -3024,23 +3024,24 @@ export default function App() {
   }, []);
 
   const loadBusiness = async (uid) => {
-    const { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
+    let { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
 
-    // Ghost account guard: if auth exists but no business record, sign out cleanly
+    // If no record found, retry once after 1.5s — the insert may still be in flight during signup
     if (!data) {
-      await supabase.auth.signOut();
-      setAuthLoading(false);
-      return;
+      await new Promise(r => setTimeout(r, 1500));
+      const { data: retry } = await supabase.from("businesses").select("*").eq("id", uid).single();
+      if (!retry) { setAuthLoading(false); return; }
+      data = retry;
     }
 
     setBusiness(data);
     setAuthLoading(false);
 
-   const isNewSignup = localStorage.getItem("new_signup");
-if (isNewSignup) {
-  localStorage.removeItem("new_signup");
-  localStorage.setItem("goto_billing", "1");
-}
+    const isNewSignup = localStorage.getItem("new_signup");
+    if (isNewSignup) {
+      localStorage.removeItem("new_signup");
+      localStorage.setItem("goto_billing", "1");
+    }
 
     // Only show onboarding for genuinely new accounts
     const seen = localStorage.getItem("onboarding_complete");
@@ -3048,7 +3049,7 @@ if (isNewSignup) {
     // Fetch billing status for usage meter
     fetch(`${API}/billing/status`, { headers: { "x-business-id": uid } })
       .then(r => r.json())
-      .then(data => setBillingStatus(data))
+      .then(d => setBillingStatus(d))
       .catch(() => {});
   };
 
