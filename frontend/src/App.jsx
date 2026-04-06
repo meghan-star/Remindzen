@@ -172,7 +172,7 @@ function InviteCodeField({ form, setForm }) {
 // ── Auth Screen ──
 
 function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState(localStorage.getItem("selected_plan") ? "signup" : "login");
   const [form, setForm] = useState({ email: "", password: "", name: "", inviteCode: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -247,8 +247,27 @@ function AuthScreen({ onAuth }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ businessName: form.name, email: form.email }),
           }).catch(() => {});
-          // Mark this as a new signup so loadBusiness redirects to Billing
-          localStorage.setItem("new_signup", "1");
+
+          // If a plan was pre-selected from the landing page, go straight to Stripe checkout
+          const selectedPlan = localStorage.getItem("selected_plan");
+          if (selectedPlan) {
+            localStorage.removeItem("selected_plan");
+            const priceMap = {
+              starter: import.meta.env.VITE_PRICE_STARTER_MONTHLY,
+              growth: import.meta.env.VITE_PRICE_GROWTH_MONTHLY,
+              pro: import.meta.env.VITE_PRICE_PRO_MONTHLY,
+            };
+            const priceId = priceMap[selectedPlan] || priceMap.growth;
+            try {
+              const res = await fetch(`${API}/billing/checkout`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ businessId: data.user.id, priceId, email: form.email }),
+              });
+              const checkout = await res.json();
+              if (checkout.url) { window.location.href = checkout.url; return; }
+            } catch (e) { console.error("Checkout error:", e); }
+          }
           onAuth(data.user);
         }
       } else {
@@ -3001,6 +3020,13 @@ export default function App() {
       window.history.replaceState({}, "", window.location.pathname);
     }
 
+    // Store plan selection from landing page link e.g. ?plan=growth
+    const planParam = params.get("plan");
+    if (planParam) {
+      localStorage.setItem("selected_plan", planParam);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     // Handle Stripe redirect back to app
     if (params.get("session_id")) {
       // Payment successful - clean URL and go to billing page
@@ -3024,25 +3050,9 @@ export default function App() {
   }, []);
 
   const loadBusiness = async (uid) => {
-    let { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
-
-    // If no record found, retry once after 1.5s — the insert may still be in flight during signup
-    if (!data) {
-      await new Promise(r => setTimeout(r, 1500));
-      const { data: retry } = await supabase.from("businesses").select("*").eq("id", uid).single();
-      if (!retry) { setAuthLoading(false); return; }
-      data = retry;
-    }
-
-    setBusiness(data);
+    const { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
+    setBusiness(data || {});
     setAuthLoading(false);
-
-    const isNewSignup = localStorage.getItem("new_signup");
-    if (isNewSignup) {
-      localStorage.removeItem("new_signup");
-      localStorage.setItem("goto_billing", "1");
-    }
-
     // Only show onboarding for genuinely new accounts
     const seen = localStorage.getItem("onboarding_complete");
     if (!seen && data?.onboarded === false) setShowOnboarding(true);
@@ -3069,7 +3079,6 @@ export default function App() {
   }
 
   if (!user) return <AuthScreen onAuth={setUser} />;
-  if (localStorage.getItem("goto_billing")) { localStorage.removeItem("goto_billing"); navigateTo("Billing"); }
   if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
   if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
 
