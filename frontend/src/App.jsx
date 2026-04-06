@@ -247,6 +247,8 @@ function AuthScreen({ onAuth }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ businessName: form.name, email: form.email }),
           }).catch(() => {});
+          // Mark this as a new signup so loadBusiness redirects to Billing
+          localStorage.setItem("new_signup", "1");
           onAuth(data.user);
         }
       } else {
@@ -3023,8 +3025,24 @@ export default function App() {
 
   const loadBusiness = async (uid) => {
     const { data } = await supabase.from("businesses").select("*").eq("id", uid).single();
-    setBusiness(data || {});
+
+    // Ghost account guard: if auth exists but no business record, sign out cleanly
+    if (!data) {
+      await supabase.auth.signOut();
+      setAuthLoading(false);
+      return;
+    }
+
+    setBusiness(data);
     setAuthLoading(false);
+
+    // New signup flag: redirect to Billing so they must select a plan
+    const isNewSignup = localStorage.getItem("new_signup");
+    if (isNewSignup) {
+      localStorage.removeItem("new_signup");
+      setTimeout(() => navigateTo("Billing"), 50);
+    }
+
     // Only show onboarding for genuinely new accounts
     const seen = localStorage.getItem("onboarding_complete");
     if (!seen && data?.onboarded === false) setShowOnboarding(true);
