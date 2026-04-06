@@ -2991,7 +2991,6 @@ export default function App() {
     localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [redirectToBilling, setRedirectToBilling] = useState(false);
 
   useEffect(() => {
     // Handle referral code in URL
@@ -3040,7 +3039,7 @@ export default function App() {
    const isNewSignup = localStorage.getItem("new_signup");
 if (isNewSignup) {
   localStorage.removeItem("new_signup");
-  setRedirectToBilling(true);
+  localStorage.setItem("goto_billing", "1");
 }
 
     // Only show onboarding for genuinely new accounts
@@ -3069,10 +3068,9 @@ if (isNewSignup) {
   }
 
   if (!user) return <AuthScreen onAuth={setUser} />;
-  if (redirectToBilling) { setRedirectToBilling(false); navigateTo("Billing"); }
-if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
-if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
-if (user && business && !business.stripe_customer_id && page !== "Billing") { navigateTo("Billing"); }
+  if (localStorage.getItem("goto_billing")) { localStorage.removeItem("goto_billing"); navigateTo("Billing"); }
+  if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
+  if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
 
   const pageTitles = {
     Dashboard: ["Dashboard", "Welcome to Remind Zen"],
