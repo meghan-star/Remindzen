@@ -3069,8 +3069,9 @@ export default function App() {
   }
 
   if (!user) return <AuthScreen onAuth={setUser} />;
-  if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
-  if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
+if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
+if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
+if (user && business && !business.stripe_customer_id && page !== "Billing") { navigateTo("Billing"); }
 
   const pageTitles = {
     Dashboard: ["Dashboard", "Welcome to Remind Zen"],
