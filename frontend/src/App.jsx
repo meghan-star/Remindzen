@@ -2991,6 +2991,7 @@ export default function App() {
     localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [redirectToBilling, setRedirectToBilling] = useState(false);
 
   useEffect(() => {
     // Handle referral code in URL
@@ -3036,12 +3037,11 @@ export default function App() {
     setBusiness(data);
     setAuthLoading(false);
 
-    // New signup flag: redirect to Billing so they must select a plan
-    const isNewSignup = localStorage.getItem("new_signup");
-    if (isNewSignup) {
-      localStorage.removeItem("new_signup");
-      setTimeout(() => navigateTo("Billing"), 50);
-    }
+   const isNewSignup = localStorage.getItem("new_signup");
+if (isNewSignup) {
+  localStorage.removeItem("new_signup");
+  setRedirectToBilling(true);
+}
 
     // Only show onboarding for genuinely new accounts
     const seen = localStorage.getItem("onboarding_complete");
@@ -3069,6 +3069,7 @@ export default function App() {
   }
 
   if (!user) return <AuthScreen onAuth={setUser} />;
+  if (redirectToBilling) { setRedirectToBilling(false); navigateTo("Billing"); }
 if (showOnboarding) return <OnboardingWizard user={user} onComplete={() => { setShowOnboarding(false); localStorage.setItem("onboarding_complete", "1"); }} />;
 if (user && business && business.onboarded === false && !localStorage.getItem("onboarding_complete")) return <OnboardingWizard user={user} onComplete={completeOnboarding} />;
 if (user && business && !business.stripe_customer_id && page !== "Billing") { navigateTo("Billing"); }
